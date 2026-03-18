@@ -211,72 +211,64 @@ const detectLocation = () => {
             </div>
           </motion.div>
 
-           <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.32 }}
-  className="bg-white rounded-2xl p-4 border-2 border-gray-200 space-y-4"
->
-  <div className="font-bold">Contact Details</div>
-
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">
-      Phone Number
-    </label>
-   <input
-  type="tel"
-  inputMode="numeric"
-  autoComplete="tel"
-      placeholder="e.g. 024XXXXXXX"
-      value={order.customerPhone || ''}
-      onChange={(e) =>
-        onUpdateOrder({
-          ...order,
-          customerPhone: formatTo233(e.target.value),
-        })
-      }
-      className="w-full border-2 border-gray-200 rounded-xl p-3 resize-none focus:border-[#7a1d1d] outline-none"
-    />
-  </div>
-</motion.div>
-        {order.deliveryMode === 'delivery' && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.35 }}
-   className="bg-white rounded-2xl p-4 border-2 border-gray-200 will-change-transform space-y-4"
-  >
-    <div className="font-bold">Delivery Details</div>
-
-    {/* Location */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Delivery Location
-      </label>
-      <textarea
-        placeholder="Describe your location or use auto-detect"
-        value={order.customerLocation || ''}
-        onChange={(e) =>
-          onUpdateOrder({
-            ...order,
-            customerLocation: e.target.value,
-          })
-        }
-        className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none"
-        rows={3}
-      />
-    </div>
-
-    {/* Auto detect */}
-    {/* <button
-      type="button"
-      onClick={detectLocation}
-      disabled={locating}
-      className="w-full border-2 border-dashed border-gray-300 rounded-xl p-3 text-sm font-medium hover:border-[#7a1d1d] transition"
+                   {order.deliveryMode === 'delivery' && (
+  <>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.32 }}
+      className="bg-white rounded-2xl p-4 border-2 border-gray-200 space-y-4"
     >
-      {locating ? 'Detecting location…' : 'Use my current location'}
-    </button> */}
-  </motion.div>
+      <div className="font-bold">Contact Details</div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Phone Number
+        </label>
+        <input
+          type="tel"
+          inputMode="numeric"
+          autoComplete="tel"
+          placeholder="e.g. 024XXXXXXX"
+          value={order.customerPhone || ''}
+          onChange={(e) =>
+            onUpdateOrder({
+              ...order,
+              customerPhone: formatTo233(e.target.value),
+            })
+          }
+          className="w-full border-2 border-gray-200 rounded-xl p-3 resize-none focus:border-[#7a1d1d] outline-none"
+        />
+      </div>
+    </motion.div>
+
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.35 }}
+      className="bg-white rounded-2xl p-4 border-2 border-gray-200 will-change-transform space-y-4"
+    >
+      <div className="font-bold">Delivery Details</div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Delivery Location
+        </label>
+        <textarea
+          placeholder="Describe your location or use auto-detect"
+          value={order.customerLocation || ''}
+          onChange={(e) =>
+            onUpdateOrder({
+              ...order,
+              customerLocation: e.target.value,
+            })
+          }
+          className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none"
+          rows={3}
+        />
+      </div>
+    </motion.div>
+  </>
 )}
 
 
