@@ -51,7 +51,7 @@ export function LandingScreen({ timeUntilClose, onStart, onTimerComplete }: Land
             </motion.div>
 
             <p className="text-gray-600 mb-2">
-              Orders open till <span className="font-bold">9:30 AM</span>
+              Orders open till <span className="font-bold">9:00 AM</span>
             </p>
 
             {/* Countdown Timer */}
