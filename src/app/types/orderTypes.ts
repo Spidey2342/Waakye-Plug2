@@ -47,7 +47,7 @@ export const PROTEINS: Protein[] = [
   { id: 'egg', name: 'Egg', price: 3, available: true },
   { id: 'meat', name: 'Meat', price: 9, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
-  { id: 'fish', name: 'Fish', price: 7, available: true }, // Example sold out
+  { id: 'fish', name: 'Fish', price: 9, available: true }, // Example sold out
 ];
 
 export const EXTRAS: Extra[] = [
