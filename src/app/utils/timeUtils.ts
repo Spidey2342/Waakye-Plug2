@@ -45,14 +45,14 @@ export function checkOrderingStatus(): OrderingStatus {
   if (isOpen) {
 
     const closeDate = new Date(now);
-    closeDate.setHours(22, 30, 0, 0);
+    closeDate.setHours(10, 0, 0, 0);
 
     timeUntilClose = closeDate.getTime() - now.getTime();
 
   } else {
 
     const openDate = new Date(now);
-    openDate.setHours(21, 0, 0, 0);
+    openDate.setHours(5, 30, 0, 0);
 
     // If past today's closing time → open tomorrow
     if (currentTime >= closeTime) {
