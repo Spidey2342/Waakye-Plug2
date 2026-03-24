@@ -32,10 +32,10 @@ export function checkOrderingStatus(): OrderingStatus {
   const currentTime = currentHour * 60 + currentMinute;
 
   // 5:30 AM
-  const openTime = 21* 60 ;
+  const openTime = 5* 60 + 30 ;
 
   // 8:00 AM
-  const closeTime = 22* 60 + 30 ;
+  const closeTime = 10* 60 ;
 
   const isOpen = currentTime >= openTime && currentTime < closeTime;
 
