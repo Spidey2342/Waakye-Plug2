@@ -59,6 +59,8 @@ export function checkOrderingStatus(): OrderingStatus {
       openDate.setDate(openDate.getDate() + 1);
     }
 
+    
+
     timeUntilOpen = openDate.getTime() - now.getTime();
   }
 
