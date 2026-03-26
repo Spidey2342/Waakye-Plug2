@@ -52,7 +52,7 @@ export function checkOrderingStatus(): OrderingStatus {
   } else {
 
     const openDate = new Date(now);
-    openDate.setHours(18, 30, 0, 0);
+    openDate.setHours(18, 0, 0, 0);
 
     // If past today's closing time → open tomorrow
     if (currentTime >= closeTime) {
