@@ -40,7 +40,7 @@ const completeOrder = () => {
 
 
 const handleWhatsApp = () => {
-  const phoneNumber = '233599995651';
+  const phoneNumber = '2335370884801';
   const encodedMessage = encodeURIComponent(message);
 
   window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, '_blank');
