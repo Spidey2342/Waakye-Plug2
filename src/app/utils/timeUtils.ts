@@ -35,7 +35,7 @@ export function checkOrderingStatus(): OrderingStatus {
   const openTime = 5* 60 + 30;
 
   // 8:00 AM
-  const closeTime = 8* 60 + 20;
+  const closeTime = 10* 60 + 50;
 
   const isOpen = currentTime >= openTime && currentTime < closeTime;
 
@@ -52,7 +52,7 @@ export function checkOrderingStatus(): OrderingStatus {
   } else {
 
     const openDate = new Date(now);
-    openDate.setHours(5, 30, 0, 0);
+    openDate.setHours(10, 50, 0, 0);
 
     // If past today's closing time → open tomorrow
     if (currentTime >= closeTime) {
