@@ -32,7 +32,7 @@ export function checkOrderingStatus(): OrderingStatus {
   const currentTime = currentHour * 60 + currentMinute;
 
   // 5:30 AM
-  const openTime = 19* 60 + 30;
+  const openTime = 18* 60 + 30;
 
   // 8:00 AM
   const closeTime = 22* 60 + 50;
