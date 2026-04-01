@@ -45,7 +45,7 @@ export const BOWL_SIZES = {
 
 export const PROTEINS: Protein[] = [
   { id: 'egg', name: 'Egg', price: 3, available: true },
-  { id: 'meat', name: 'Meat', price: 9, available: true },
+  { id: 'chicken', name: 'Chicken', price: 9, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
   { id: 'fish', name: 'Fish', price: 9, available: true }, // Example sold out
 ];
