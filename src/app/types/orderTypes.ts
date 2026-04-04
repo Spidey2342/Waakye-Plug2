@@ -45,18 +45,18 @@ export const BOWL_SIZES = {
 
 export const PROTEINS: Protein[] = [
   { id: 'egg', name: 'Egg', price: 3, available: true },
-  { id: 'chicken', name: 'Chicken', price: 9, available: true },
+  { id: 'chicken', name: 'Chicken', price: 10, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
-  { id: 'fish', name: 'Fish', price: 9, available: true }, // Example sold out
+  { id: 'fish', name: 'Fish', price: 12, available: true }, // Example sold out
 ];
 
 export const EXTRAS: Extra[] = [
   { id: 'gari', name: 'Gari', price: 2, available: true },
   { id: 'salad', name: 'Salad', price: 2, available: true },
-  { id: 'mixedsalad', name: 'Mixed-Salad', price: 8, available: true },
+  { id: 'mixedsalad', name: 'Mixed-Salad', price: 10, available: true },
   { id: 'plantain', name: 'Plantain', price: 4, available: true },
   { id: 'spaghetti', name: 'Spaghetti', price: 3, available: true },
-  { id: 'wele', name: 'Wele', price: 6, available: true },
+  { id: 'wele', name: 'Wele', price: 7, available: true },
   // { id: 'drink', name: 'Drink', price: 5, available: true },
 ];
 
