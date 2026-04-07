@@ -45,7 +45,7 @@ export function checkOrderingStatus(): OrderingStatus {
   if (isOpen) {
 
     const closeDate = new Date(now);
-    closeDate.setHours(11, 0, 0, 0);
+    closeDate.setHours(10, 0, 0, 0);
 
     timeUntilClose = closeDate.getTime() - now.getTime();
 
