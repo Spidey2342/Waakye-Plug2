@@ -34,7 +34,7 @@ export function ClosedScreen({ timeUntilOpen }: ClosedScreenProps) {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-           Get ready to get served today, <br />We would open today at 9:30am 🌅 
+           Get ready to get served today🌅 
           
   
           </h1>
