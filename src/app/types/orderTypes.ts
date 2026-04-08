@@ -79,11 +79,11 @@ export const PROTEINS: Protein[] = [
   { id: 'egg', name: 'Egg', price: 3, available: true },
   { id: 'chicken', name: 'Chicken', price: 10, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
-  { id: 'fish', name: 'Fish', price: 12, available: true }, // Example sold out
+  { id: 'fish', name: 'Fish', price: 10, available: true }, // Example sold out
 ];
 export const BREAKFAST_EXTRAS: Sbextra[] = [
   { id: 'breadandvegitableeggs', name: 'Bread and vegitable eggs', price: 10, available: true },
-  { id: 'breadandeggs', name: 'Bread and eggs', price: 8, available: true },
+  { id: 'breadandeggs', name: 'Bread and eggs', price: 9, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
   { id: 'boiledegg', name: 'Boiled eggs', price:4 , available: true },
   { id: 'bakedbeans', name: 'Baked beans', price:3 , available: true },
@@ -91,10 +91,10 @@ export const BREAKFAST_EXTRAS: Sbextra[] = [
 export const EXTRAS: Extra[] = [
   { id: 'gari', name: 'Gari', price: 2, available: true },
   { id: 'salad', name: 'Salad', price: 2, available: true },
-  { id: 'mixedsalad', name: 'Mixed-Salad', price: 10, available: true },
+  { id: 'mixedsalad', name: 'Mixed-Salad', price: 8, available: true },
   { id: 'plantain', name: 'Plantain', price: 4, available: true },
   { id: 'spaghetti', name: 'Spaghetti', price: 3, available: true },
-  { id: 'wele', name: 'Wele', price: 7, available: true },
+  { id: 'wele', name: 'Wele', price: 6, available: true },
   // { id: 'drink', name: 'Drink', price: 5, available: true },
 ];
 
