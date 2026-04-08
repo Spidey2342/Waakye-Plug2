@@ -1,21 +1,27 @@
 import { motion } from 'motion/react';
 import { MessageCircle, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
-import { OrderItem, formatOrderMessage } from '@/app/types/orderTypes';
-
+import { OrderItem, formatOrderMessage,formatBreakfastMessage, Breakfast,BOWL_SIZES } from '@/app/types/orderTypes';
 
 
 interface ConfirmationScreenProps {
-  order: OrderItem;
+  order: OrderItem | Breakfast;
+  orderType: 'waakye' | 'breakfast';
   onDone: () => void;
-  onSaveOrder: (order: OrderItem) => void;
+   onConfirm: () => void;
+  onSaveOrder: (order: any) => void;
 }
-
-export function ConfirmationScreen({ order, onDone, onSaveOrder }: ConfirmationScreenProps) {
-
+export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: ConfirmationScreenProps) {
+const isWaakye = orderType === 'waakye';
+const basePrice = isWaakye
+  ? BOWL_SIZES[(order as OrderItem).size].price
+  : 0;
 
   const [copied, setCopied] = useState(false);
-  const message = formatOrderMessage(order);
+  const message =
+  orderType === 'waakye'
+    ? formatOrderMessage(order as OrderItem)
+    : formatBreakfastMessage(order as Breakfast);
 
   const handleCopy = async () => {
   try {

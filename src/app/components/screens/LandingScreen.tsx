@@ -6,10 +6,11 @@ import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
 interface LandingScreenProps {
   timeUntilClose: number;
   onStart: () => void;
+  onBuild: () => void;
   onTimerComplete: () => void;
 }
 
-export function LandingScreen({ timeUntilClose, onStart, onTimerComplete }: LandingScreenProps) {
+export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplete }: LandingScreenProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -73,12 +74,22 @@ export function LandingScreen({ timeUntilClose, onStart, onTimerComplete }: Land
            Build Your Waakye
               <ArrowRight className="w-5 h-5" />
             </motion.button>
+             <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onBuild}
+              className="w-full bg-[#7a1d1d] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg hover:bg-[#6a1717] transition-colors mt-5 "
+            >
+           Build Your Breakfast
+              <ArrowRight className="w-5 h-5" />
+            </motion.button>
 
             <p className="text-sm text-gray-500 mt-4">
               ⚡ Limited bowls today
             </p>
           </div>
         </motion.div>
+        
 
         {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-600 select-none">

@@ -1,18 +1,21 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { ChevronLeft, Edit2, Package, Truck } from 'lucide-react';
-import { OrderItem, BOWL_SIZES, PROTEINS, EXTRAS, calculateOrderTotal, DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
+import { OrderItem, Breakfast,BOWL_SIZES, PROTEINS, EXTRAS, calculateOrderTotal,calculateBreakfastTotal , DELIVERY_FEE, SERVICE_FEE, BREAKFAST_EXTRAS, S_Breakfast } from '@/app/types/orderTypes';
+
+
 
 interface OrderSummaryScreenProps {
-  order: OrderItem;
-  onUpdateOrder: (order: OrderItem) => void;
+  order: OrderItem | Breakfast;
+  orderType: 'waakye' | 'breakfast';
   onBack: () => void;
   onConfirm: () => void;
+  onUpdateOrder: (order: any) => void;
 }
 
 
-export function OrderSummaryScreen({ order, onUpdateOrder, onBack, onConfirm }: OrderSummaryScreenProps) {
-
+export function OrderSummaryScreen({ order, orderType, onUpdateOrder, onBack, onConfirm }: OrderSummaryScreenProps) {
+const isWaakye = orderType === 'waakye';
 
    const [locating, setLocating] = useState(false);
 
@@ -42,19 +45,27 @@ const detectLocation = () => {
   );
 };
 
-  const total = calculateOrderTotal(order);
-  const basePrice = BOWL_SIZES[order.size].price;
+const total =
+  orderType === 'waakye'
+    ? calculateOrderTotal(order as OrderItem)
+    : calculateBreakfastTotal(order as Breakfast);
+const basePrice = isWaakye
+  ? BOWL_SIZES[(order as OrderItem).size].price
+  : S_Breakfast[(order as Breakfast).drink].price;
 
-  const proteinItems = Object.entries(order.proteins)
+  const proteinItems = Object.entries(order.proteins || {})
     .map(([id, qty]) => {
       const protein = PROTEINS.find(p => p.id === id);
       return protein ? { ...protein, quantity: qty } : null;
     })
     .filter(Boolean);
 
-  const extraItems = order.extras
-    .map(id => EXTRAS.find(e => e.id === id))
-    .filter(Boolean);
+const extraItems = order.extras.map(id =>
+  (orderType === 'waakye'
+    ? EXTRAS.find(e => e.id === id)
+    : BREAKFAST_EXTRAS.find(e => e.id === id)
+  )
+).filter(Boolean);
 
   const toggleDeliveryMode = () => {
     onUpdateOrder({
@@ -105,9 +116,24 @@ const detectLocation = () => {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="text-3xl">🍚</div>
-                <div>
-                  <div className="font-bold">{BOWL_SIZES[order.size].name} Waakye</div>
+                <div className="text-3xl">
+  {isWaakye ? '🍚' : '🥤'}
+</div>
+                
+<div>
+  {isWaakye ? (
+    <div className="font-bold">
+      {BOWL_SIZES[(order as OrderItem).size].name} Waakye
+    </div>
+  ) : (
+    <div className="font-bold">
+      {S_Breakfast[(order as Breakfast).drink].name}
+    </div>
+  )}
+  <div className="text-sm text-gray-600">
+    {isWaakye ? 'Base' : 'Drink'}
+  </div>
+
                   <div className="text-sm text-gray-600">Base</div>
                 </div>
               </div>

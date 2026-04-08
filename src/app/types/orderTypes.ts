@@ -1,6 +1,7 @@
 // Order types and configuration
 
 export type BowlSize = 'small' | 'medium' | 'large';
+export type Sbreakfast = 'tea' | 'lipton' | 'coffee';
 
 export interface Protein {
   id: string;
@@ -15,6 +16,12 @@ export interface Extra {
   price: number;
   available: boolean;
 }
+export interface Sbextra {
+  id: string;
+  name: string;
+  price: number;
+  available: boolean;
+}
 
 export interface OrderItem {
   size: BowlSize;
@@ -23,6 +30,13 @@ export interface OrderItem {
   deliveryMode: 'delivery';
   customerPhone?: string;
   customerLocation?: string;
+}
+export interface Breakfast {
+  drink: Sbreakfast;
+  proteins?: { [key: string]: number };
+  size?: string;
+  extras: string[];
+  deliveryMode: 'delivery';
 }
 
 export const BOWL_SIZES = {
@@ -43,13 +57,37 @@ export const BOWL_SIZES = {
   },
 } as const;
 
+export const S_Breakfast={
+  tea:{
+    name: 'Milo tea',
+    price: 5,
+    description: 'Your morning choice',
+  },
+  lipton:{
+    name:'Lipton tea',
+    price: 4,
+    description:'A little boost for the body',
+  },
+  coffee:{
+    name: 'Coffee drink',
+    price:5,
+    description:'An ultimate boost'
+  }
+} as const;
+
 export const PROTEINS: Protein[] = [
   { id: 'egg', name: 'Egg', price: 3, available: true },
   { id: 'chicken', name: 'Chicken', price: 10, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
   { id: 'fish', name: 'Fish', price: 12, available: true }, // Example sold out
 ];
-
+export const BREAKFAST_EXTRAS: Sbextra[] = [
+  { id: 'breadandvegitableeggs', name: 'Bread and vegitable eggs', price: 10, available: true },
+  { id: 'breadandeggs', name: 'Bread and eggs', price: 8, available: true },
+  { id: 'sausage', name: 'Sausage', price: 4, available: true },
+  { id: 'boiledegg', name: 'Boiled eggs', price:4 , available: true },
+  { id: 'bakedbeans', name: 'Baked beans', price:3 , available: true },
+];
 export const EXTRAS: Extra[] = [
   { id: 'gari', name: 'Gari', price: 2, available: true },
   { id: 'salad', name: 'Salad', price: 2, available: true },
@@ -63,6 +101,58 @@ export const EXTRAS: Extra[] = [
 export const DELIVERY_FEE = 8;
 export const SERVICE_FEE = 1;
 
+export function calculateBreakfastTotal(order: Breakfast): number {
+  let total = S_Breakfast[order.drink].price;
+
+  order.extras.forEach(extraId => {
+    const extra = BREAKFAST_EXTRAS.find(e => e.id === extraId);
+    if (extra) {
+      total += extra.price;
+    }
+  });
+
+  total += SERVICE_FEE;
+
+  if (order.deliveryMode === 'delivery') {
+    total += DELIVERY_FEE;
+  }
+
+  return total;
+}
+export function formatBreakfastMessage(order: Breakfast): string {
+  let message = `🍳 *BREAKFAST ORDER*\n\n`;
+
+  message += `☕ Drink: ${S_Breakfast[order.drink].name}`;
+
+  const extrasList: string[] = [];
+  order.extras.forEach(extraId => {
+    const extra = BREAKFAST_EXTRAS.find(e => e.id === extraId);
+    if (extra) {
+      extrasList.push(extra.name);
+    }
+  });
+
+  if (extrasList.length > 0) {
+    message += `\nExtras: ${extrasList.join(', ')}`;
+  }
+
+  message += `\n\n🚚 ${order.deliveryMode === 'delivery' ? 'Delivery' : 'Pickup'}`;
+
+  if (order.customerPhone) {
+    message += `\n📞 Phone: ${order.customerPhone}`;
+  }
+
+  if (order.deliveryMode === 'delivery' && order.customerLocation) {
+    message += `\n📍 Location: ${order.customerLocation}`;
+  }
+
+  const total = calculateBreakfastTotal(order);
+  message += `\n\n💰 *Total: GH₵${total}*`;
+
+  message += `\n\n⚡ Sent from Waakye Plug`;
+
+  return message;
+}
 
 export function calculateOrderTotal(order: OrderItem): number {
   let total = BOWL_SIZES[order.size].price;
