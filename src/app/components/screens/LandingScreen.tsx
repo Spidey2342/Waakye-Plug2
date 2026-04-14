@@ -52,8 +52,8 @@ export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplet
             </motion.div>
 
             <p className="text-gray-600 mb-2">
-              Place your pre-orders now 
-              {/* <span className="font-bold">11:00 AM</span> */}
+              Place your orders now. <br />
+              <span className="font-bold"> Deliveries end at 11:00 AM</span>
             </p>
 
             {/* Countdown Timer */}
