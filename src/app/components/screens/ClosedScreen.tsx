@@ -34,13 +34,13 @@ export function ClosedScreen({ timeUntilOpen }: ClosedScreenProps) {
           </div>
 
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-           Get ready to get served today🌅 
+           Get ready to get served tomorrow🌅 
           
   
           </h1>
 
           <p className="text-gray-600 mb-6">
-            Delivery starts tomorrow at <span className="font-bold">10:00 AM</span>
+            Pre-orders starts at <span className="font-bold">5:00 PM</span>
           </p>
 
           {/* Countdown to Next Opening */}
