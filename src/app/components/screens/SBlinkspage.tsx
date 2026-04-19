@@ -36,7 +36,7 @@ import { S_Breakfast } from '@/app/types/orderTypes';
             <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-lg">
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <h1 className="font-bold text-lg">Build Your Breakfast</h1>
+            <h1 className="font-bold text-lg">Build Your Jollof-Rice</h1>
             <div className="w-10" /> {/* Spacer */}
           </div>
         </div>
@@ -71,15 +71,16 @@ import { S_Breakfast } from '@/app/types/orderTypes';
         }`}
       >
         <div className="text-3xl mb-2">
-          {drink === 'tea' && '🍵'}
-          {drink === 'lipton' && '🍋'}
-          {drink === 'coffee' && '☕'}
+          {drink === 'small' && ' 🍚'}
+          {drink === 'medium' && '🍚'}
+          {drink === 'large' && '🍚'}
         </div>
 
         <div className="font-bold text-sm">{drinkData.name}</div>
         <div className="text-[#7a1d1d] font-bold">
           GH₵{drinkData.price}
         </div>
+         <div className="text-xs text-gray-500 mt-1">{drinkData.description}</div>
       </button>
   </motion.section>
 

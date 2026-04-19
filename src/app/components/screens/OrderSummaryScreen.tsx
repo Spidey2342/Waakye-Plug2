@@ -117,7 +117,7 @@ const extraItems = order.extras.map(id =>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">
-  {isWaakye ? '🍚' : '🥤'}
+  {isWaakye ? '🍚' : '🍚'}
 </div>
                 
 <div>
@@ -131,7 +131,7 @@ const extraItems = order.extras.map(id =>
     </div>
   )}
   <div className="text-sm text-gray-600">
-    {isWaakye ? 'Base' : 'Drink'}
+    {isWaakye ? 'Base' : 'Jollof'}
   </div>
 
                   <div className="text-sm text-gray-600">Base</div>

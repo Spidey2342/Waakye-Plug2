@@ -59,18 +59,18 @@ export const BOWL_SIZES = {
 
 export const S_Breakfast={
   tea:{
-    name: 'Milo tea',
-    price: 5,
+    name: 'Small',
+    price: 12,
     description: 'Your morning choice',
   },
   lipton:{
-    name:'Lipton tea',
-    price: 4,
+    name:'Medium',
+    price: 16,
     description:'A little boost for the body',
   },
   coffee:{
-    name: 'Coffee drink',
-    price:5,
+    name: 'Large',
+    price:20,
     description:'An ultimate boost'
   }
 } as const;
@@ -82,11 +82,13 @@ export const PROTEINS: Protein[] = [
   { id: 'fish', name: 'Fish', price: 10, available: true }, // Example sold out
 ];
 export const BREAKFAST_EXTRAS: Sbextra[] = [
-  { id: 'breadandvegitableeggs', name: 'Bread and vegitable eggs', price: 10, available: true },
-  { id: 'breadandeggs', name: 'Bread and eggs', price: 9, available: true },
+  { id: 'eggs', name: 'Eggs', price: 3, available: true },
+  // { id: 'breadandeggs', name: 'Bread and eggs', price: 9, available: true },
   { id: 'sausage', name: 'Sausage', price: 4, available: true },
-  { id: 'boiledegg', name: 'Boiled eggs', price:4 , available: true },
-  { id: 'bakedbeans', name: 'Baked beans', price:3 , available: true },
+  { id: 'chicken', name: 'Chicken', price:10 , available: true },
+  { id: 'fish', name: 'Fish', price:10 , available: true },
+  { id: 'mixedSalad', name: 'Mixed Salad', price:10 , available: true },
+  { id: 'Salad', name: 'Salad', price:4 , available: true },
 ];
 export const EXTRAS: Extra[] = [
   { id: 'gari', name: 'Gari', price: 2, available: true },
@@ -122,7 +124,7 @@ export function calculateBreakfastTotal(order: Breakfast): number {
 export function formatBreakfastMessage(order: Breakfast): string {
   let message = `🍳 *BREAKFAST ORDER*\n\n`;
 
-  message += `☕ Drink: ${S_Breakfast[order.drink].name}`;
+  message += `  🍚 Jollof: ${S_Breakfast[order.drink].name}`;
 
   const extrasList: string[] = [];
   order.extras.forEach(extraId => {

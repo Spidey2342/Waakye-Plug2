@@ -81,7 +81,7 @@ export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplet
               onClick={onBuild}
               className="w-full bg-[#7a1d1d] text-white py-3 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg hover:bg-[#6a1717] transition-colors mt-5 "
             >
-           Build Your Breakfast
+           Build Your Jollof
               <ArrowRight className="w-5 h-5" />
             </motion.button>
 
