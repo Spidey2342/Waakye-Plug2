@@ -1,36 +1,31 @@
 import { useState, useEffect } from 'react';
 import { checkOrderingStatus } from '@/app/utils/timeUtils';
-import { OrderItem } from '@/app/types/orderTypes';
+import { OrderItem, Breakfast } from '@/app/types/orderTypes';
 import { LandingScreen } from '@/app/components/screens/LandingScreen';
 import { ClosedScreen } from '@/app/components/screens/ClosedScreen';
 import { BuildWaakyeScreen } from '@/app/components/screens/BuildWaakyeScreen';
 import { SBlinkspage } from '@/app/components/screens/SBlinkspage';
 import { OrderSummaryScreen } from '@/app/components/screens/OrderSummaryScreen';
 import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen';
-import { saveOrder } from '@/app/utils/orderHistory';
 import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen';
-import { Breakfast } from '@/app/types/orderTypes';
-/**
- * Waakye Plug - Morning-only Waakye Ordering Experience
- * 
- * Ordering Hours: 5:30 AM - 8:00 AM
- * 
- * Flow:
- * 1. Landing Screen (with countdown) → Build Screen → Summary → Confirmation
- * 2. Closed Screen (outside ordering hours)
- * 
- * To test different times, modify TEST_TIME in /src/app/utils/timeUtils.ts
- * Example: export const TEST_TIME = new Date('2026-01-15T07:00:00');
- */
+import { RewardsScreen } from '@/app/components/screens/Rewardscreen';
+import { UsernameScreen } from '@/app/components/screens/Usernamescreen';
+import { useUser } from '@/app/context/UserContext';
+import { saveOrder } from '@/app/utils/orderHistory';
+import { recordOrder } from '@/app/lib/gameService';
+import { Toaster } from 'sonner';
 
-type Screen = 'landing' | 'closed' | 'build' | 'summary' | 'confirm' | 'history'| 'build2';
+type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
+type OrderType = 'waakye' | 'breakfast';
 
 export default function App() {
+  const { hasUser, userId, username } = useUser();
+
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
-  type OrderType = 'waakye' | 'breakfast';
-  
-const [orderType, setOrderType] = useState<OrderType>('waakye');
+  const [orderType, setOrderType] = useState<OrderType>('waakye');
+  const [canSpin, setCanSpin] = useState(false);
+
   const [waakyeOrder, setWaakyeOrder] = useState<OrderItem>({
     size: 'medium',
     proteins: {},
@@ -38,130 +33,147 @@ const [orderType, setOrderType] = useState<OrderType>('waakye');
     deliveryMode: 'pickup',
   });
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
-  drink: 'tea',
-  extras: [],
-  deliveryMode: 'pickup',
-});
-useEffect(() => {
-  const status = checkOrderingStatus();
-  setOrderingStatus(status);
+    drink: 'tea',
+    extras: [],
+    deliveryMode: 'pickup',
+  });
 
-  if (!status.isOpen && currentScreen === 'landing') {
-    setCurrentScreen('closed');
-  }
-
-  const interval = setInterval(() => {
-    const newStatus = checkOrderingStatus();
-    setOrderingStatus(newStatus);
-
-    if (!newStatus.isOpen && (currentScreen === 'landing' || currentScreen === 'build' || currentScreen === 'summary')) {
+  // ── Time-based open/close polling ──────────────────────────────────────────
+  useEffect(() => {
+    const status = checkOrderingStatus();
+    setOrderingStatus(status);
+    if (!status.isOpen && currentScreen === 'landing') {
       setCurrentScreen('closed');
     }
 
-    if (newStatus.isOpen && currentScreen === 'closed') {
-      setCurrentScreen('landing');
+    const interval = setInterval(() => {
+      const newStatus = checkOrderingStatus();
+      setOrderingStatus(newStatus);
+      if (!newStatus.isOpen && ['landing', 'build', 'build2', 'summary'].includes(currentScreen)) {
+        setCurrentScreen('closed');
+      }
+      if (newStatus.isOpen && currentScreen === 'closed') {
+        setCurrentScreen('landing');
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [currentScreen]);
+
+  // ── Username gate — show before anything else ──────────────────────────────
+  if (!hasUser) {
+    return (
+      <>
+        <Toaster position="top-center" richColors />
+        <UsernameScreen />
+      </>
+    );
+  }
+
+  // ── Order confirmed: save + record points ──────────────────────────────────
+  async function handleOrderConfirmed() {
+    saveOrder(orderType === 'waakye' ? waakyeOrder : breakfastOrder);
+    try {
+      // orderTotal=1 means 10 pts base; pass real GHS total here if available
+      await recordOrder(userId, username, 1);
+    } catch (e) {
+      console.error('Could not record order for gamification', e);
     }
+    setCanSpin(true);
+    setCurrentScreen('confirm');
+  }
 
-  }, 10000);
-
-  return () => clearInterval(interval);
-
-}, []);
-
-  const handleTimerComplete = () => {
-    setCurrentScreen('closed');
-  };
+  const handleTimerComplete = () => setCurrentScreen('closed');
 
   const renderScreen = () => {
-    // Force closed screen if ordering is not open
-    if (!orderingStatus.isOpen && currentScreen !== 'closed' && currentScreen !== 'confirm') {
-      return (
-        <ClosedScreen 
-          timeUntilOpen={orderingStatus.timeUntilOpen}
-        />
-      );
+    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history', 'rewards'].includes(currentScreen)) {
+      return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
     }
 
     switch (currentScreen) {
-  case 'landing':
-    return (
-      <LandingScreen
-        timeUntilClose={orderingStatus.timeUntilClose}
-    onStart={() => {
-  setOrderType('waakye');
-  setCurrentScreen('build');
-}}
-onBuild={() => {
-  setOrderType('breakfast');
-  setCurrentScreen('build2');
-}}
-        onTimerComplete={handleTimerComplete}
-      />
-    );
+      case 'landing':
+        return (
+          <LandingScreen
+            timeUntilClose={orderingStatus.timeUntilClose}
+            onStart={() => { setOrderType('waakye'); setCurrentScreen('build'); }}
+            onBuild={() => { setOrderType('breakfast'); setCurrentScreen('build2'); }}
+            onTimerComplete={handleTimerComplete}
+            // Add this button to your LandingScreen if it doesn't have it yet:
+            onRewards={() => setCurrentScreen('rewards')}
+          />
+        );
 
-  case 'closed':
-    return (
-      <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />
-    );
+      case 'closed':
+        return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
 
-  case 'build':
-    return (
-     <BuildWaakyeScreen
-      order={waakyeOrder}
-      onUpdateOrder={setWaakyeOrder}
-      onBack={() => setCurrentScreen('landing')}
-      onContinue={() => setCurrentScreen('summary')}
-    />
-    );
-case 'build2':
-    return (
-      <SBlinkspage
-      order={breakfastOrder}
-      onUpdateOrder={setBreakfastOrder}
-      onBack={() => setCurrentScreen('landing')}
-      onContinue={() => setCurrentScreen('summary')}
-    />
-    );
+      case 'build':
+        return (
+          <BuildWaakyeScreen
+            order={waakyeOrder}
+            onUpdateOrder={setWaakyeOrder}
+            onBack={() => setCurrentScreen('landing')}
+            onContinue={() => setCurrentScreen('summary')}
+          />
+        );
 
-  case 'summary':
-    return (
-  <OrderSummaryScreen
-  order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-  orderType={orderType}
-  onBack={() => setCurrentScreen(orderType === 'waakye' ? 'build' : 'build2')}
-  onConfirm={() => setCurrentScreen('confirm')}
-  onUpdateOrder={orderType === 'waakye' ? setWaakyeOrder : setBreakfastOrder}
-/>
-    );
-case 'confirm':
-  return (
-    <ConfirmationScreen
-      order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-      orderType={orderType}
-      onSaveOrder={saveOrder}
-      onDone={() => setCurrentScreen('history')}
-    />
-  );
+      case 'build2':
+        return (
+          <SBlinkspage
+            order={breakfastOrder}
+            onUpdateOrder={setBreakfastOrder}
+            onBack={() => setCurrentScreen('landing')}
+            onContinue={() => setCurrentScreen('summary')}
+          />
+        );
 
-  case 'history':
-    return (
-      <OrderHistoryScreen
-         onOrderAgain={(storedOrder) => {
-  if (storedOrder.type === 'breakfast') {
-    setBreakfastOrder(storedOrder);
-    setOrderType('breakfast');
-    setCurrentScreen('build2');
-  } else {
-    setWaakyeOrder(storedOrder);
-    setOrderType('waakye');
-    setCurrentScreen('build');
-  }
-}}
-      />
-    );
+      case 'summary':
+        return (
+          <OrderSummaryScreen
+            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
+            orderType={orderType}
+            onBack={() => setCurrentScreen(orderType === 'waakye' ? 'build' : 'build2')}
+            onConfirm={handleOrderConfirmed}
+            onUpdateOrder={orderType === 'waakye' ? setWaakyeOrder : setBreakfastOrder}
+          />
+        );
 
+      case 'confirm':
+        return (
+          <ConfirmationScreen
+            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
+            orderType={orderType}
+            onSaveOrder={saveOrder}
+            onDone={() => setCurrentScreen('history')}
+            // Wire this button in ConfirmationScreen:
+            onViewRewards={() => { setCurrentScreen('rewards'); }}
+          />
+        );
 
-      
+      case 'history':
+        return (
+          <OrderHistoryScreen
+            onOrderAgain={(storedOrder) => {
+              if (storedOrder.type === 'breakfast') {
+                setBreakfastOrder(storedOrder);
+                setOrderType('breakfast');
+                setCurrentScreen('build2');
+              } else {
+                setWaakyeOrder(storedOrder);
+                setOrderType('waakye');
+                setCurrentScreen('build');
+              }
+            }}
+          />
+        );
+
+      case 'rewards':
+        return (
+          <RewardsScreen
+            onBack={() => setCurrentScreen(canSpin ? 'confirm' : 'landing')}
+            canSpin={canSpin}
+          />
+        );
+
       default:
         return (
           <LandingScreen
@@ -175,6 +187,7 @@ case 'confirm':
 
   return (
     <div className="size-full">
+      <Toaster position="top-center" richColors />
       {renderScreen()}
     </div>
   );
