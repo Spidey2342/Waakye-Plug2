@@ -18,6 +18,7 @@ import { Toaster } from 'sonner';
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
 type OrderType = 'waakye' | 'breakfast';
 
+
 export default function App() {
   const { hasUser, userId, username } = useUser();
 
