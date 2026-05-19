@@ -8,7 +8,7 @@ import { SBlinkspage } from '@/app/components/screens/SBlinkspage';
 import { OrderSummaryScreen } from '@/app/components/screens/OrderSummaryScreen';
 import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen';
 import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen';
-// import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
+import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { useUser } from '@/app/context/UserContext';
 import { saveOrder } from '@/app/utils/orderHistory';
