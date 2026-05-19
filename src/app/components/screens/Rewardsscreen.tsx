@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { Star, Flame, RotateCw, Trophy, Crown, Medal, ShoppingBag, ArrowLeft, Gift, RefreshCw, Zap } from 'lucide-react'
-import { useUser } from '@/app/context/UserContext'
-import { getOrCreatePlayer, getLeaderboard, getPlayerRank, recordSpin, pickReward } from '@/app/lib/gameService'
-import { supabase, SPIN_REWARDS, type PlayerStats, type SpinReward } from '@/app/lib/supabase'
+import { useUser } from '../../context/Usercontext'
+import { getOrCreatePlayer, getLeaderboard, getPlayerRank, recordSpin, pickReward } from '../../lib/Gameservice'
+import { supabase, SPIN_REWARDS, type PlayerStats, type SpinReward } from '../../lib/supabase'
 import { toast } from 'sonner'
 
 type Tab = 'rewards' | 'spin' | 'leaderboard'
