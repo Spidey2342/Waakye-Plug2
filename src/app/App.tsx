@@ -168,13 +168,13 @@ export default function App() {
         );
 
       case 'rewards':
-        return <div>Rewards coming soon</div>;
-        // return (
-        //   <RewardsScreen
-        //     onBack={() => setCurrentScreen(canSpin ? 'confirm' : 'landing')}
-        //     canSpin={canSpin}
-        //   />
-        // );
+        // return <div>Rewards coming soon</div>;
+        return (
+          <RewardsScreen
+            onBack={() => setCurrentScreen(canSpin ? 'confirm' : 'landing')}
+            canSpin={canSpin}
+          />
+        );
 
       default:
         return (
