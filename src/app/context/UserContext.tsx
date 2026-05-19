@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 
 type UserContextType = {
   userId: string
@@ -9,13 +9,10 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | null>(null)
 
-// Generate a stable random ID
 function generateId(): string {
   return 'user-' + Math.random().toString(36).slice(2, 11)
 }
 
-// We store userId in sessionStorage so it persists across hot reloads
-// but resets when the browser tab closes — no auth needed
 function getOrCreateUserId(): string {
   let id = sessionStorage.getItem('wp_user_id')
   if (!id) {
