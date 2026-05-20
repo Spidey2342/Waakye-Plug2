@@ -12,7 +12,7 @@ import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { useUser } from '@/app/context/UserContext';
 import { saveOrder } from '@/app/utils/orderHistory';
-import { recordOrder } from '@/app/lib/gameService';
+import { recordOrder } from '@/app/lib/game-service'
 import { Toaster } from 'sonner';
 
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
