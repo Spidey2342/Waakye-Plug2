@@ -1,9 +1,7 @@
 import { supabase, POINTS_PER_ORDER, SPIN_REWARDS, type PlayerStats, type SpinReward } from './supabase'
 
-// ─── Player ────────────────────────────────────────────────────────────────
-
 export async function getOrCreatePlayer(userId: string, username: string): Promise<PlayerStats> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('player_stats')
     .select('*')
     .eq('user_id', userId)
@@ -11,13 +9,13 @@ export async function getOrCreatePlayer(userId: string, username: string): Promi
 
   if (data) return data
 
-  const { data: created, error: createError } = await supabase
+  const { data: created, error } = await supabase
     .from('player_stats')
     .insert({ user_id: userId, username })
     .select()
     .single()
 
-  if (createError) throw createError
+  if (error) throw error
   return created
 }
 
@@ -30,21 +28,17 @@ export async function getPlayer(userId: string): Promise<PlayerStats | null> {
   return data
 }
 
-// ─── Order + Points + Streak ────────────────────────────────────────────────
-
-export async function recordOrder(userId: string, orderTotal: number): Promise<{
+export async function recordOrder(userId: string, username: string, orderTotal: number): Promise<{
   player: PlayerStats
   pointsEarned: number
   streakUpdated: boolean
   newStreak: number
 }> {
-  const player = await getPlayer(userId)
-  if (!player) throw new Error('Player not found')
+  let player = await getPlayer(userId)
+  if (!player) player = await getOrCreatePlayer(userId, username)
 
   const today = new Date().toISOString().split('T')[0]
   const lastDate = player.last_order_date
-
-  // Calculate streak
   let newStreak = player.current_streak
   let streakUpdated = false
 
@@ -52,30 +46,25 @@ export async function recordOrder(userId: string, orderTotal: number): Promise<{
     newStreak = 1
     streakUpdated = true
   } else {
-    const last = new Date(lastDate)
-    const todayDate = new Date(today)
-    const diffDays = Math.floor((todayDate.getTime() - last.getTime()) / 86400000)
-
+    const diffDays = Math.floor(
+      (new Date(today).getTime() - new Date(lastDate).getTime()) / 86400000
+    )
     if (diffDays === 0) {
-      // Same day — streak unchanged
+      // same day, no change
     } else if (diffDays === 1) {
       newStreak = player.current_streak + 1
       streakUpdated = true
     } else {
-      // Streak broken
       newStreak = 1
       streakUpdated = true
     }
   }
 
-  // Points: base per order + bonus for streaks
-  const basePoints = POINTS_PER_ORDER * Math.floor(orderTotal)
+  const basePoints = POINTS_PER_ORDER * Math.max(1, Math.floor(orderTotal))
   const streakBonus = newStreak >= 7 ? 50 : newStreak >= 3 ? 20 : 0
   const pointsEarned = basePoints + streakBonus
-
   const newLongest = Math.max(player.longest_streak, newStreak)
 
-  // Update player stats
   const { data: updated, error } = await supabase
     .from('player_stats')
     .update({
@@ -91,16 +80,10 @@ export async function recordOrder(userId: string, orderTotal: number): Promise<{
 
   if (error) throw error
 
-  // Log the order
-  await supabase.from('orders').insert({
-    user_id: userId,
-    points_earned: pointsEarned,
-  })
+  await supabase.from('orders').insert({ user_id: userId, points_earned: pointsEarned })
 
   return { player: updated, pointsEarned, streakUpdated, newStreak }
 }
-
-// ─── Spin the Wheel ─────────────────────────────────────────────────────────
 
 export function pickReward(): SpinReward {
   const rand = Math.random()
@@ -116,7 +99,6 @@ export async function recordSpin(userId: string, reward: SpinReward): Promise<Pl
   const player = await getPlayer(userId)
   if (!player) throw new Error('Player not found')
 
-  // Add reward points to player
   const { data: updated, error } = await supabase
     .from('player_stats')
     .update({ points: player.points + reward.points })
@@ -126,16 +108,10 @@ export async function recordSpin(userId: string, reward: SpinReward): Promise<Pl
 
   if (error) throw error
 
-  // Log spin
-  await supabase.from('spin_history').insert({
-    user_id: userId,
-    reward: reward.label,
-  })
+  await supabase.from('spin_history').insert({ user_id: userId, reward: reward.label })
 
   return updated
 }
-
-// ─── Leaderboard ─────────────────────────────────────────────────────────────
 
 export async function getLeaderboard(limit = 10): Promise<PlayerStats[]> {
   const { data, error } = await supabase
