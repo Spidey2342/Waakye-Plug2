@@ -1,16 +1,20 @@
 import { motion } from 'motion/react';
-import { Sunrise, ArrowRight } from 'lucide-react';
 import { CountdownTimer } from '@/app/components/CountdownTimer';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
+// Add Trophy to the imports at the top:
+import { Sunrise, ArrowRight, Trophy } from 'lucide-react';
 
+// Add onRewards to the interface:
 interface LandingScreenProps {
   timeUntilClose: number;
   onStart: () => void;
   onBuild: () => void;
   onTimerComplete: () => void;
+  onRewards: () => void;  // ADD THIS
 }
 
-export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplete }: LandingScreenProps) {
+// Add onRewards to the destructured props:
+export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplete, onRewards }: LandingScreenProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -75,7 +79,7 @@ export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplet
            Build Your Waakye
               <ArrowRight className="w-5 h-5" />
             </motion.button>
-             <motion.button
+             {/* <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onBuild}
@@ -83,7 +87,16 @@ export function LandingScreen({ timeUntilClose, onStart, onBuild, onTimerComplet
             >
            Build Your Jollof
               <ArrowRight className="w-5 h-5" />
-            </motion.button>
+            </motion.button> */}
+            <motion.button
+  whileHover={{ scale: 1.02 }}
+  whileTap={{ scale: 0.98 }}
+  onClick={onRewards}
+  className="w-full border-2 border-amber-400 text-amber-700 bg-amber-50 py-3 rounded-2xl font-bold text-base flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors mt-3"
+>
+  <Trophy className="w-5 h-5" />
+  Rewards & Leaderboard
+</motion.button>
 
             <p className="text-sm text-gray-500 mt-4">
               ⚡ Limited bowls today

@@ -64,19 +64,24 @@ export async function recordOrder(userId: string, username: string, orderTotal: 
   const streakBonus = newStreak >= 7 ? 50 : newStreak >= 3 ? 20 : 0
   const pointsEarned = basePoints + streakBonus
   const newLongest = Math.max(player.longest_streak, newStreak)
+// In recordOrder — add spins_remaining to the update:
+const { data: updated, error } = await supabase
+  .from('player_stats')
+  .update({
+    points: player.points + pointsEarned,
+    total_orders: player.total_orders + 1,
+    current_streak: newStreak,
+    longest_streak: newLongest,
+    last_order_date: today,
+    spins_remaining: 3,   // ← RESET TO 3 ON EVERY ORDER
+  })
+  .eq('user_id', userId)
+  .select()
+  .single()
 
-  const { data: updated, error } = await supabase
-    .from('player_stats')
-    .update({
-      points: player.points + pointsEarned,
-      total_orders: player.total_orders + 1,
-      current_streak: newStreak,
-      longest_streak: newLongest,
-      last_order_date: today,
-    })
-    .eq('user_id', userId)
-    .select()
-    .single()
+// After the update, send admin notification:
+const msg = `🍛 *New Order*\n\n👤 ${username}\n⭐ +${pointsEarned} pts\n💰 Total: ${updated.points} pts\n🔥 Streak: ${newStreak} days\n📦 Orders: ${updated.total_orders}`
+window.open(`https://wa.me/233599995651?text=${encodeURIComponent(msg)}`, '_blank')
 
   if (error) throw error
 
@@ -95,16 +100,25 @@ export function pickReward(): SpinReward {
   return SPIN_REWARDS[SPIN_REWARDS.length - 1]
 }
 
+// In recordSpin — add limit check at the top:
 export async function recordSpin(userId: string, reward: SpinReward): Promise<PlayerStats> {
   const player = await getPlayer(userId)
   if (!player) throw new Error('Player not found')
 
+  if (player.spins_remaining <= 0) {
+    throw new Error('No spins left! Place an order to unlock 3 more spins.')
+  }
+
   const { data: updated, error } = await supabase
     .from('player_stats')
-    .update({ points: player.points + reward.points })
+    .update({
+      points: player.points + reward.points,
+      spins_remaining: player.spins_remaining - 1,  // ← DEDUCT 1
+    })
     .eq('user_id', userId)
     .select()
     .single()
+  
 
   if (error) throw error
 

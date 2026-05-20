@@ -123,18 +123,21 @@ function SpinWheel({ userId, canSpin, onRewardClaimed }: {
           Won: <span className="font-bold ml-1">{reward.label}</span>&nbsp;(+{reward.points} pts)
         </div>
       )}
-      {!canSpin && !hasSpun && (
-        <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-4 py-2 text-center">
-          🔒 Complete an order to unlock your spin!
-        </p>
-      )}
+       <div className="text-center text-sm text-gray-500 mb-2">
+      {canSpin ? `${3} spins remaining` : '0 spins remaining'}
+        {!canSpin && (
+          <span className="block text-amber-600 font-medium mt-1">
+            Place an order to unlock 3 spins 🔒
+          </span>
+        )}
+      </div>
       <button
         onClick={spin}
         disabled={spinning || hasSpun || !canSpin}
         className="flex items-center gap-2 rounded-xl bg-green-600 px-8 py-3 text-sm font-medium text-white hover:bg-green-700 active:scale-95 transition-all disabled:opacity-50"
       >
         <RotateCw size={15} className={spinning ? 'animate-spin' : ''} />
-        {hasSpun ? 'Already spun this order' : spinning ? 'Spinning...' : 'Spin the Ladle!'}
+        {hasSpun ? 'Already spun this order' : spinning ? 'Spinning...' : canSpin ? 'Spin the Ladle!' : 'No spins left'}
       </button>
     </div>
   )

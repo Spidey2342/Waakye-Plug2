@@ -14,9 +14,9 @@ export type PlayerStats = {
   current_streak: number
   longest_streak: number
   last_order_date: string | null
+  spins_remaining: number   // ADD THIS LINE
   created_at: string
 }
-
 export type SpinReward = {
   label: string
   points: number
