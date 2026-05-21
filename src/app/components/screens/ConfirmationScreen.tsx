@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, Copy, Check, RotateCw, Gift, AlertCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { OrderItem, formatOrderMessage, formatBreakfastMessage, Breakfast, BOWL_SIZES } from '@/app/types/orderTypes';
+import { OrderItem, formatOrderMessage, formatBreakfastMessage, Breakfast} from '@/app/types/orderTypes';
 import { useUser } from '@/app/context/UserContext';
-import { getOrCreatePlayer, pickReward, recordSpin, recordOrder } from '@/app/lib/game-service';
+import { pickReward, recordSpin } from '@/app/lib/game-service';
 import { SPIN_REWARDS, type SpinReward } from '@/app/lib/supabase';
 import { toast } from 'sonner';
 
@@ -13,6 +13,8 @@ interface ConfirmationScreenProps {
   onDone: () => void;
   onConfirm: () => void;
   onSaveOrder: (order: any) => void;
+  pointsEarned: number;        // ← from App.tsx
+  spinsRemaining: number;      // ← from App.tsx
 }
 
 // ─── Spin Wheel popup ─────────────────────────────────────────────────────────
@@ -243,17 +245,12 @@ function SendConfirmDialog({
 }
 
 // ─── Main ConfirmationScreen ──────────────────────────────────────────────────
-export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: ConfirmationScreenProps) {
-  const { userId, username } = useUser();
-  const isWaakye = orderType === 'waakye';
-  const basePrice = isWaakye ? BOWL_SIZES[(order as OrderItem).size].price : 0;
+export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
+  const { userId } = useUser();
 
-  // Flow state
+  // Flow state only — no duplicate state for props
   const [step, setStep] = useState<'spin' | 'review' | 'sending'>('spin');
-  const [spinsRemaining, setSpinsRemaining] = useState(3);
   const [wonReward, setWonReward] = useState<SpinReward | null>(null);
-  const [pointsEarned, setPointsEarned] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
 
@@ -270,24 +267,7 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: Co
       )
     : baseMessage;
 
-  // Record order on mount — this gives spins + points
-  useEffect(() => {
-    async function init() {
-      try {
-        const result = await recordOrder(userId, username, basePrice || 1);
-        setPointsEarned(result.pointsEarned);
-        setSpinsRemaining(result.player.spins_remaining ?? 3);
-      } catch {
-        try {
-          const player = await getOrCreatePlayer(userId, username);
-          setSpinsRemaining(player.spins_remaining ?? 0);
-        } catch {}
-      } finally {
-        setLoading(false);
-      }
-    }
-    init();
-  }, []);
+  // No useEffect — recordOrder already called in App.tsx
 
   function handleRewardPicked(reward: SpinReward) {
     setWonReward(reward);
@@ -327,8 +307,8 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: Co
   return (
     <>
       <AnimatePresence>
-        {/* Step 1 — Spin popup (shown first, blocks everything else) */}
-        {step === 'spin' && !loading && (
+        {/* Spin popup — only on spin step */}
+        {step === 'spin' && (
           <SpinWheelPopup
             userId={userId}
             spinsRemaining={spinsRemaining}
@@ -370,7 +350,7 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: Co
             </p>
 
             {/* Points earned */}
-            {!loading && pointsEarned > 0 && (
+            {pointsEarned > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -401,7 +381,7 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: Co
               </motion.div>
             )}
 
-            {/* No reward — option to go back and spin */}
+            {/* No reward — option to spin */}
             {!wonReward && step === 'review' && (
               <button
                 onClick={() => setStep('spin')}
@@ -428,20 +408,30 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder }: Co
               </pre>
             </div>
 
-            {/* Send button — opens confirm dialog */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowSendConfirm(true)}
-              disabled={step === 'sending' || loading}
-              className="w-full bg-green-500 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-green-600 transition-colors shadow-md disabled:opacity-60"
-            >
-              <MessageCircle className="w-6 h-6" />
-              <div>
-                <div>Confirm via WhatsApp</div>
-                <div className="text-xs font-normal">Preferred 👍</div>
+            {/* WhatsApp button — locked during spin step */}
+            {step !== 'spin' ? (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowSendConfirm(true)}
+                disabled={step === 'sending'}
+                className="w-full bg-green-500 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-green-600 transition-colors shadow-md disabled:opacity-60"
+              >
+                <MessageCircle className="w-6 h-6" />
+                <div>
+                  <div>Confirm via WhatsApp</div>
+                  <div className="text-xs font-normal">Preferred 👍</div>
+                </div>
+              </motion.button>
+            ) : (
+              <div className="w-full bg-gray-100 text-gray-400 py-5 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed">
+                <MessageCircle className="w-6 h-6" />
+                <div>
+                  <div>Spin first to unlock sending</div>
+                  <div className="text-xs font-normal">or skip the spin above 👆</div>
+                </div>
               </div>
-            </motion.button>
+            )}
 
             <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
               <p className="text-sm text-gray-700 text-center">

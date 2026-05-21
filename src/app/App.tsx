@@ -13,6 +13,7 @@ import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { useUser } from '@/app/context/UserContext';
 import { saveOrder } from '@/app/utils/orderHistory';
 import { recordOrder } from '@/app/lib/game-service'
+import { BOWL_SIZES } from '@/app/types/orderTypes';
 import { Toaster } from 'sonner';
 
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
@@ -26,7 +27,8 @@ export default function App() {
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
   const [orderType, setOrderType] = useState<OrderType>('waakye');
   const [canSpin, setCanSpin] = useState(false);
-
+const [pointsEarned, setPointsEarned] = useState(0);
+const [spinsRemaining, setSpinsRemaining] = useState(3);
   const [waakyeOrder, setWaakyeOrder] = useState<OrderItem>({
     size: 'medium',
     proteins: {},
@@ -72,17 +74,22 @@ export default function App() {
   }
 
   // ── Order confirmed: save + record points ──────────────────────────────────
-  async function handleOrderConfirmed() {
-    saveOrder(orderType === 'waakye' ? waakyeOrder : breakfastOrder);
-    try {
-      // orderTotal=1 means 10 pts base; pass real GHS total here if available
-      await recordOrder(userId, username, 1);
-    } catch (e) {
-      console.error('Could not record order for gamification', e);
-    }
-    setCanSpin(true);
-    setCurrentScreen('confirm');
+// Replace handleOrderConfirmed with this:
+async function handleOrderConfirmed() {
+  try {
+    const result = await recordOrder(userId, username, 
+      orderType === 'waakye' 
+        ? BOWL_SIZES[(waakyeOrder as OrderItem).size].price 
+        : 1
+    );
+    setPointsEarned(result.pointsEarned);
+    setSpinsRemaining(result.player.spins_remaining ?? 3);
+  } catch (e) {
+    console.error('Could not record order', e);
+    setSpinsRemaining(3);
   }
+  setCurrentScreen('confirm');
+}
 
   const handleTimerComplete = () => setCurrentScreen('closed');
 
@@ -137,18 +144,18 @@ export default function App() {
             onUpdateOrder={orderType === 'waakye' ? setWaakyeOrder : setBreakfastOrder}
           />
         );
-
-      case 'confirm':
-        return (
-          <ConfirmationScreen
-            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-            orderType={orderType}
-            onSaveOrder={saveOrder}
-            onDone={() => setCurrentScreen('history')}
-            // Wire this button in ConfirmationScreen:
-            onViewRewards={() => { setCurrentScreen('rewards'); }}
-          />
-        );
+        
+case 'confirm':
+  return (
+    <ConfirmationScreen
+      order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
+      orderType={orderType}
+      onSaveOrder={saveOrder}
+      onDone={() => setCurrentScreen('history')}
+      pointsEarned={pointsEarned}
+      spinsRemaining={spinsRemaining}
+    />
+  );
 
       case 'history':
         return (
