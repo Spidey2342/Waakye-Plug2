@@ -79,10 +79,6 @@ const { data: updated, error } = await supabase
   .select()
   .single()
 
-// After the update, send admin notification:
-const msg = `🍛 *New Order*\n\n👤 ${username}\n⭐ +${pointsEarned} pts\n💰 Total: ${updated.points} pts\n🔥 Streak: ${newStreak} days\n📦 Orders: ${updated.total_orders}`
-window.open(`https://wa.me/233599995651?text=${encodeURIComponent(msg)}`, '_blank')
-
   if (error) throw error
 
   await supabase.from('orders').insert({ user_id: userId, points_earned: pointsEarned })

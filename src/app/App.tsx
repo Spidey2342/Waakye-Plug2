@@ -83,13 +83,13 @@ async function handleOrderConfirmed() {
         ? BOWL_SIZES[(waakyeOrder as OrderItem).size].price
         : 1
     );
-    setPointsEarned(result.pointsEarned);
+      setPointsEarned(result.pointsEarned);
     setSpinsRemaining(result.player.spins_remaining ?? 3);
   } catch (e) {
     console.error('Could not record order', e);
     setSpinsRemaining(3);
   }
-  setCurrentScreen('confirm');
+  setCurrentScreen('confirm'); 
 }
 
   const handleTimerComplete = () => setCurrentScreen('closed');
