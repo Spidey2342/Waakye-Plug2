@@ -74,12 +74,13 @@ const [spinsRemaining, setSpinsRemaining] = useState(3);
   }
 
   // ── Order confirmed: save + record points ──────────────────────────────────
-// Replace handleOrderConfirmed with this:
 async function handleOrderConfirmed() {
   try {
-    const result = await recordOrder(userId, username, 
-      orderType === 'waakye' 
-        ? BOWL_SIZES[(waakyeOrder as OrderItem).size].price 
+    const result = await recordOrder(
+      userId,
+      username,
+      orderType === 'waakye'
+        ? BOWL_SIZES[(waakyeOrder as OrderItem).size].price
         : 1
     );
     setPointsEarned(result.pointsEarned);
@@ -144,7 +145,7 @@ async function handleOrderConfirmed() {
             onUpdateOrder={orderType === 'waakye' ? setWaakyeOrder : setBreakfastOrder}
           />
         );
-        
+
 case 'confirm':
   return (
     <ConfirmationScreen
