@@ -97,7 +97,7 @@ export const EXTRAS: Extra[] = [
   { id: 'plantain', name: 'Plantain', price: 4, available: true },
   { id: 'spaghetti', name: 'Spaghetti', price: 3, available: true },
   { id: 'wele', name: 'Wele', price: 6, available: true },
-  // { id: 'drink', name: 'Drink', price: 5, available: true },
+  { id: 'drink', name: 'Ice-Kenkey', price: 10, available: true },
 ];
 
 export const DELIVERY_FEE = 8;
