@@ -3,15 +3,13 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { ChevronLeft, Minus, Plus, Trash2, Package, Truck } from 'lucide-react';
-import { useCart, CartLine } from '@/app/context/CartContext';
+import { useCart, CartLine, waakyeItemPrice, breakfastItemPrice } from '@/app/context/CartContext';
 import {
   BOWL_SIZES,
   S_Breakfast,
   PROTEINS,
   EXTRAS,
   BREAKFAST_EXTRAS,
-  calculateOrderTotal,
-  calculateBreakfastTotal,
   DELIVERY_FEE,
   SERVICE_FEE,
   OrderItem,
@@ -72,8 +70,8 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
 
   const lineUnitPrice = (line: CartLine) =>
     line.type === 'waakye'
-      ? calculateOrderTotal(line.order as OrderItem)
-      : calculateBreakfastTotal(line.order as Breakfast);
+      ? waakyeItemPrice(line.order as OrderItem)
+      : breakfastItemPrice(line.order as Breakfast);
 
   const lineProteins = (line: CartLine) =>
     Object.entries(line.order.proteins || {})

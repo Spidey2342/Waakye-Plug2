@@ -4,8 +4,11 @@ import { createContext, useContext, useState, ReactNode } from 'react';
 import {
   OrderItem,
   Breakfast,
-  calculateOrderTotal,
-  calculateBreakfastTotal,
+  BOWL_SIZES,
+  PROTEINS,
+  EXTRAS,
+  S_Breakfast,
+  BREAKFAST_EXTRAS,
   DELIVERY_FEE,
   SERVICE_FEE,
 } from '@/app/types/orderTypes';
@@ -40,6 +43,33 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// Item price ONLY — bowl/breakfast + proteins + extras, no fees.
+// SERVICE_FEE / DELIVERY_FEE are applied once for the whole cart in
+// totalPrice below, since orderTypes.ts's calculateOrderTotal /
+// calculateBreakfastTotal already bake those fees into a single item
+// and would double-count them if reused per line here.
+export function waakyeItemPrice(order: OrderItem): number {
+  let total = BOWL_SIZES[order.size].price;
+  Object.entries(order.proteins).forEach(([id, qty]) => {
+    const protein = PROTEINS.find((p) => p.id === id);
+    if (protein) total += protein.price * qty;
+  });
+  order.extras.forEach((id) => {
+    const extra = EXTRAS.find((e) => e.id === id);
+    if (extra) total += extra.price;
+  });
+  return total;
+}
+
+export function breakfastItemPrice(order: Breakfast): number {
+  let total = S_Breakfast[order.drink].price;
+  order.extras.forEach((id) => {
+    const extra = BREAKFAST_EXTRAS.find((e) => e.id === id);
+    if (extra) total += extra.price;
+  });
+  return total;
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('pickup');
@@ -73,13 +103,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const toggleDeliveryMode = () =>
     setDeliveryMode((m) => (m === 'pickup' ? 'delivery' : 'pickup'));
 
-  const lineUnitTotal = (line: CartLine) =>
+  const lineUnitPrice = (line: CartLine) =>
     line.type === 'waakye'
-      ? calculateOrderTotal(line.order as OrderItem)
-      : calculateBreakfastTotal(line.order as Breakfast);
+      ? waakyeItemPrice(line.order as OrderItem)
+      : breakfastItemPrice(line.order as Breakfast);
 
   const totalItems = lines.reduce((sum, l) => sum + l.quantity, 0);
-  const itemsSubtotal = lines.reduce((sum, l) => sum + lineUnitTotal(l) * l.quantity, 0);
+  const itemsSubtotal = lines.reduce((sum, l) => sum + lineUnitPrice(l) * l.quantity, 0);
   const totalPrice =
     lines.length === 0
       ? 0
