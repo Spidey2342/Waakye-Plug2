@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { checkOrderingStatus } from '@/app/utils/timeUtils';
 import { OrderItem, Breakfast } from '@/app/types/orderTypes';
@@ -11,24 +13,36 @@ import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen'
 import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { useUser } from '@/app/context/UserContext';
+import { CartProvider, useCart } from '@/app/context/CartContext';
+import { FloatingCartButton } from '@/app/components/FloatingCartButton';
 import { saveOrder } from '@/app/utils/orderHistory';
-import { recordOrder } from '@/app/lib/game-service'
+import { recordOrder } from '@/app/lib/game-service';
 import { BOWL_SIZES } from '@/app/types/orderTypes';
 import { Toaster } from 'sonner';
 
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
 type OrderType = 'waakye' | 'breakfast';
 
-
+// CartProvider has to sit above everything that calls useCart(), so App itself
+// is now just a thin wrapper and the real logic lives in AppContent.
 export default function App() {
+  return (
+    <CartProvider>
+      <AppContent />
+    </CartProvider>
+  );
+}
+
+function AppContent() {
   const { hasUser, userId, username } = useUser();
+  const { addToCart, lines, clearCart } = useCart();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
   const [orderType, setOrderType] = useState<OrderType>('waakye');
   const [canSpin, setCanSpin] = useState(false);
-const [pointsEarned, setPointsEarned] = useState(0);
-const [spinsRemaining, setSpinsRemaining] = useState(3);
+  const [pointsEarned, setPointsEarned] = useState(0);
+  const [spinsRemaining, setSpinsRemaining] = useState(3);
   const [waakyeOrder, setWaakyeOrder] = useState<OrderItem>({
     size: 'medium',
     proteins: {},
@@ -73,24 +87,43 @@ const [spinsRemaining, setSpinsRemaining] = useState(3);
     );
   }
 
-  // ── Order confirmed: save + record points ──────────────────────────────────
-async function handleOrderConfirmed() {
-  try {
-    const result = await recordOrder(
-      userId,
-      username,
-      orderType === 'waakye'
-        ? BOWL_SIZES[(waakyeOrder as OrderItem).size].price
-        : 1
-    );
-      setPointsEarned(result.pointsEarned);
-    setSpinsRemaining(result.player.spins_remaining ?? 3);
-  } catch (e) {
-    console.error('Could not record order', e);
-    setSpinsRemaining(3);
+  // ── "Continue" on a build screen now means "add this to the cart" ──────────
+  function handleAddToCart() {
+    addToCart(orderType, orderType === 'waakye' ? waakyeOrder : breakfastOrder);
+
+    // reset the builder so the next item starts fresh
+    if (orderType === 'waakye') {
+      setWaakyeOrder({ size: 'medium', proteins: {}, extras: [], deliveryMode: 'pickup' });
+    } else {
+      setBreakfastOrder({ drink: 'tea', extras: [], deliveryMode: 'pickup' });
+    }
+
+    setCurrentScreen('summary');
   }
-  setCurrentScreen('confirm'); 
-}
+
+  // ── Order confirmed: save + record points across the whole cart ────────────
+  async function handleOrderConfirmed() {
+    try {
+      const orderValue = lines.reduce((sum, line) => {
+        const unitPrice =
+          line.type === 'waakye' ? BOWL_SIZES[(line.order as OrderItem).size].price : 1;
+        return sum + unitPrice * line.quantity;
+      }, 0);
+
+      const result = await recordOrder(userId, username, orderValue);
+      setPointsEarned(result.pointsEarned);
+      setSpinsRemaining(result.player.spins_remaining ?? 3);
+    } catch (e) {
+      console.error('Could not record order', e);
+      setSpinsRemaining(3);
+    }
+    setCurrentScreen('confirm');
+  }
+
+  function handleOrderDone() {
+    clearCart();
+    setCurrentScreen('history');
+  }
 
   const handleTimerComplete = () => setCurrentScreen('closed');
 
@@ -107,7 +140,6 @@ async function handleOrderConfirmed() {
             onStart={() => { setOrderType('waakye'); setCurrentScreen('build'); }}
             onBuild={() => { setOrderType('breakfast'); setCurrentScreen('build2'); }}
             onTimerComplete={handleTimerComplete}
-            // Add this button to your LandingScreen if it doesn't have it yet:
             onRewards={() => setCurrentScreen('rewards')}
           />
         );
@@ -121,7 +153,7 @@ async function handleOrderConfirmed() {
             order={waakyeOrder}
             onUpdateOrder={setWaakyeOrder}
             onBack={() => setCurrentScreen('landing')}
-            onContinue={() => setCurrentScreen('summary')}
+            onContinue={handleAddToCart}
           />
         );
 
@@ -131,32 +163,31 @@ async function handleOrderConfirmed() {
             order={breakfastOrder}
             onUpdateOrder={setBreakfastOrder}
             onBack={() => setCurrentScreen('landing')}
-            onContinue={() => setCurrentScreen('summary')}
+            onContinue={handleAddToCart}
           />
         );
 
       case 'summary':
+        // No more order/orderType/onUpdateOrder props — OrderSummaryScreen
+        // reads everything straight from useCart().
         return (
           <OrderSummaryScreen
-            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-            orderType={orderType}
-            onBack={() => setCurrentScreen(orderType === 'waakye' ? 'build' : 'build2')}
+            onBack={() => setCurrentScreen('landing')}
             onConfirm={handleOrderConfirmed}
-            onUpdateOrder={orderType === 'waakye' ? setWaakyeOrder : setBreakfastOrder}
           />
         );
 
-case 'confirm':
-  return (
-    <ConfirmationScreen
-      order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-      orderType={orderType}
-      onSaveOrder={saveOrder}
-      onDone={() => setCurrentScreen('history')}
-      pointsEarned={pointsEarned}
-      spinsRemaining={spinsRemaining}
-    />
-  );
+      case 'confirm':
+        return (
+          <ConfirmationScreen
+            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
+            orderType={orderType}
+            onSaveOrder={saveOrder}
+            onDone={handleOrderDone}
+            pointsEarned={pointsEarned}
+            spinsRemaining={spinsRemaining}
+          />
+        );
 
       case 'history':
         return (
@@ -176,7 +207,6 @@ case 'confirm':
         );
 
       case 'rewards':
-        // return <div>Rewards coming soon</div>;
         return (
           <RewardsScreen
             onBack={() => setCurrentScreen(canSpin ? 'confirm' : 'landing')}
@@ -199,6 +229,9 @@ case 'confirm':
     <div className="size-full">
       <Toaster position="top-center" richColors />
       {renderScreen()}
+      {['landing', 'build', 'build2'].includes(currentScreen) && (
+        <FloatingCartButton onClick={() => setCurrentScreen('summary')} />
+      )}
     </div>
   );
 }
