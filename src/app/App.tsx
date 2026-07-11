@@ -34,7 +34,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { hasUser, userId, username } = useUser();
+  const { hasUser, phone, username } = useUser();
   const { addToCart, lines, clearCart } = useCart();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -110,7 +110,7 @@ function AppContent() {
         return sum + unitPrice * line.quantity;
       }, 0);
 
-      const result = await recordOrder(userId, username, orderValue);
+      const result = await recordOrder(phone, username, orderValue);
       setPointsEarned(result.pointsEarned);
       setSpinsRemaining(result.player.spins_remaining ?? 3);
     } catch (e) {

@@ -1,17 +1,33 @@
 import { supabase, POINTS_PER_ORDER, SPIN_REWARDS, type PlayerStats, type SpinReward } from './supabase'
 
-export async function getOrCreatePlayer(userId: string, username: string): Promise<PlayerStats> {
+// Player identity is now keyed by phone number, not by a random per-device
+// id. The per-device id changes across browsers/devices for the same
+// person, which was creating a "new player" every time someone signed in
+// from somewhere else.
+export async function getOrCreatePlayer(phone: string, username: string): Promise<PlayerStats> {
   const { data } = await supabase
     .from('player_stats')
     .select('*')
-    .eq('user_id', userId)
+    .eq('phone', phone)
     .single()
 
-  if (data) return data
+  if (data) {
+    // Keep the display name fresh in case they typed it differently this time
+    if (data.username !== username) {
+      const { data: renamed } = await supabase
+        .from('player_stats')
+        .update({ username })
+        .eq('phone', phone)
+        .select()
+        .single()
+      return renamed ?? data
+    }
+    return data
+  }
 
   const { data: created, error } = await supabase
     .from('player_stats')
-    .insert({ user_id: userId, username })
+    .insert({ phone, username })
     .select()
     .single()
 
@@ -19,23 +35,23 @@ export async function getOrCreatePlayer(userId: string, username: string): Promi
   return created
 }
 
-export async function getPlayer(userId: string): Promise<PlayerStats | null> {
+export async function getPlayer(phone: string): Promise<PlayerStats | null> {
   const { data } = await supabase
     .from('player_stats')
     .select('*')
-    .eq('user_id', userId)
+    .eq('phone', phone)
     .single()
   return data
 }
 
-export async function recordOrder(userId: string, username: string, orderTotal: number): Promise<{
+export async function recordOrder(phone: string, username: string, orderTotal: number): Promise<{
   player: PlayerStats
   pointsEarned: number
   streakUpdated: boolean
   newStreak: number
 }> {
-  let player = await getPlayer(userId)
-  if (!player) player = await getOrCreatePlayer(userId, username)
+  let player = await getPlayer(phone)
+  if (!player) player = await getOrCreatePlayer(phone, username)
 
   const today = new Date().toISOString().split('T')[0]
   const lastDate = player.last_order_date
@@ -64,24 +80,27 @@ export async function recordOrder(userId: string, username: string, orderTotal: 
   const streakBonus = newStreak >= 7 ? 50 : newStreak >= 3 ? 20 : 0
   const pointsEarned = basePoints + streakBonus
   const newLongest = Math.max(player.longest_streak, newStreak)
-// In recordOrder — add spins_remaining to the update:
-const { data: updated, error } = await supabase
-  .from('player_stats')
-  .update({
-    points: player.points + pointsEarned,
-    total_orders: player.total_orders + 1,
-    current_streak: newStreak,
-    longest_streak: newLongest,
-    last_order_date: today,
-    spins_remaining: 3,   // ← RESET TO 3 ON EVERY ORDER
-  })
-  .eq('user_id', userId)
-  .select()
-  .single()
+
+  const { data: updated, error } = await supabase
+    .from('player_stats')
+    .update({
+      points: player.points + pointsEarned,
+      total_orders: player.total_orders + 1,
+      current_streak: newStreak,
+      longest_streak: newLongest,
+      last_order_date: today,
+      spins_remaining: 3, // reset to 3 on every order
+    })
+    .eq('phone', phone)
+    .select()
+    .single()
 
   if (error) throw error
 
-  await supabase.from('orders').insert({ user_id: userId, points_earned: pointsEarned })
+  // Use the canonical player row's own user_id for the `orders` FK, not the
+  // caller's local device id — the two can differ once a phone number gets
+  // matched to an existing account created from a different device.
+  await supabase.from('orders').insert({ user_id: updated.user_id, points_earned: pointsEarned })
 
   return { player: updated, pointsEarned, streakUpdated, newStreak }
 }
@@ -96,9 +115,8 @@ export function pickReward(): SpinReward {
   return SPIN_REWARDS[SPIN_REWARDS.length - 1]
 }
 
-// In recordSpin — add limit check at the top:
-export async function recordSpin(userId: string, reward: SpinReward): Promise<PlayerStats> {
-  const player = await getPlayer(userId)
+export async function recordSpin(phone: string, reward: SpinReward): Promise<PlayerStats> {
+  const player = await getPlayer(phone)
   if (!player) throw new Error('Player not found')
 
   if (player.spins_remaining <= 0) {
@@ -109,16 +127,15 @@ export async function recordSpin(userId: string, reward: SpinReward): Promise<Pl
     .from('player_stats')
     .update({
       points: player.points + reward.points,
-      spins_remaining: player.spins_remaining - 1,  // ← DEDUCT 1
+      spins_remaining: player.spins_remaining - 1,
     })
-    .eq('user_id', userId)
+    .eq('phone', phone)
     .select()
     .single()
-  
 
   if (error) throw error
 
-  await supabase.from('spin_history').insert({ user_id: userId, reward: reward.label })
+  await supabase.from('spin_history').insert({ user_id: updated.user_id, reward: reward.label })
 
   return updated
 }
@@ -134,13 +151,13 @@ export async function getLeaderboard(limit = 10): Promise<PlayerStats[]> {
   return data ?? []
 }
 
-export async function getPlayerRank(userId: string): Promise<number> {
+export async function getPlayerRank(phone: string): Promise<number> {
   const { data } = await supabase
     .from('player_stats')
-    .select('user_id, points')
+    .select('phone, points')
     .order('points', { ascending: false })
 
   if (!data) return 0
-  const rank = data.findIndex(p => p.user_id === userId)
+  const rank = data.findIndex((p) => p.phone === phone)
   return rank === -1 ? 0 : rank + 1
 }

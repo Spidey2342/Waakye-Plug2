@@ -25,12 +25,12 @@ const RADIUS = 100;
 const CENTER = 115;
 
 function SpinWheelPopup({
-  userId,
+  phone,
   spinsRemaining,
   onRewardPicked,
   onSkip,
 }: {
-  userId: string;
+  phone: string;
   spinsRemaining: number;
   onRewardPicked: (reward: SpinReward) => void;
   onSkip: () => void;
@@ -107,7 +107,7 @@ function SpinWheelPopup({
         setSpinning(false);
         setReward(picked);
         setSpinsLeft(s => s - 1);
-        recordSpin(userId, picked)
+        recordSpin(phone, picked)
           .then(() => toast.success(`+${picked.points} pts added!`))
           .catch(() => {});
       }
@@ -246,7 +246,7 @@ function SendConfirmDialog({
 
 // ─── Main ConfirmationScreen ──────────────────────────────────────────────────
 export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
-  const { userId } = useUser();
+  const { phone } = useUser();
 
   // Flow state only — no duplicate state for props
   const [step, setStep] = useState<'spin' | 'review' | 'sending'>('spin');
@@ -310,7 +310,7 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, poin
         {/* Spin popup — only on spin step */}
         {step === 'spin' && (
           <SpinWheelPopup
-            userId={userId}
+            phone={phone}
             spinsRemaining={spinsRemaining}
             onRewardPicked={handleRewardPicked}
             onSkip={handleSkipSpin}
