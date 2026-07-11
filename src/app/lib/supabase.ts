@@ -25,8 +25,8 @@ export type SpinReward = {
 }
 
 export const SPIN_REWARDS: SpinReward[] = [
-  { label: 'Free Delivery',   points: 50,  color: '#1D9E75', probability: 0.20 },
-  { label: '10% Off',         points: 30,  color: '#EF9F27', probability: 0.25 },
+  { label: 'Free Salad',   points: 50,  color: '#1D9E75', probability: 0.10 },
+  { label: '10% Off',         points: 30,  color: '#EF9F27', probability: 0.18 },
   { label: '+100 Points',     points: 100, color: '#7F77DD', probability: 0.15 },
   { label: 'Free Egg',        points: 20,  color: '#D85A30', probability: 0.20 },
   { label: '+50 Points',      points: 50,  color: '#378ADD', probability: 0.12 },
