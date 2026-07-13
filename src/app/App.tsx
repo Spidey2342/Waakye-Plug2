@@ -180,8 +180,6 @@ function AppContent() {
       case 'confirm':
         return (
           <ConfirmationScreen
-            order={orderType === 'waakye' ? waakyeOrder : breakfastOrder}
-            orderType={orderType}
             onSaveOrder={saveOrder}
             onDone={handleOrderDone}
             pointsEarned={pointsEarned}

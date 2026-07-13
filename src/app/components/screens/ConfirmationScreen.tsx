@@ -1,20 +1,96 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, Copy, Check, RotateCw, Gift, AlertCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import { OrderItem, formatOrderMessage, formatBreakfastMessage, Breakfast} from '@/app/types/orderTypes';
+import {
+  OrderItem,
+  Breakfast,
+  BOWL_SIZES,
+  S_Breakfast,
+  PROTEINS,
+  EXTRAS,
+  BREAKFAST_EXTRAS,
+} from '@/app/types/orderTypes';
 import { useUser } from '@/app/context/UserContext';
+import { useCart, CartLine, waakyeItemPrice, breakfastItemPrice } from '@/app/context/CartContext';
 import { pickReward, recordSpin } from '@/app/lib/game-service';
 import { SPIN_REWARDS, type SpinReward } from '@/app/lib/supabase';
 import { toast } from 'sonner';
 
 interface ConfirmationScreenProps {
-  order: OrderItem | Breakfast;
-  orderType: 'waakye' | 'breakfast';
   onDone: () => void;
-  onConfirm: () => void;
   onSaveOrder: (order: any) => void;
   pointsEarned: number;        // ← from App.tsx
   spinsRemaining: number;      // ← from App.tsx
+}
+
+// ─── Build the full WhatsApp message from every line in the cart ──────────────
+function formatCartMessage({
+  lines,
+  deliveryMode,
+  customerPhone,
+  customerLocation,
+  totalPrice,
+}: {
+  lines: CartLine[];
+  deliveryMode: 'pickup' | 'delivery';
+  customerPhone: string;
+  customerLocation: string;
+  totalPrice: number;
+}): string {
+  let message = `🍚 *WAAKYE PLUG ORDER*\n\n`;
+
+  lines.forEach((line) => {
+    const isWaakye = line.type === 'waakye';
+    const order = line.order;
+
+    let itemLine = isWaakye
+      ? `${BOWL_SIZES[(order as OrderItem).size].name} Waakye`
+      : S_Breakfast[(order as Breakfast).drink].name;
+
+    if (isWaakye) {
+      const proteinList: string[] = [];
+      Object.entries((order as OrderItem).proteins).forEach(([id, qty]) => {
+        const protein = PROTEINS.find((p) => p.id === id);
+        if (protein && qty > 0) {
+          proteinList.push(qty > 1 ? `${qty}x ${protein.name}` : protein.name);
+        }
+      });
+      if (proteinList.length > 0) itemLine += ` + ${proteinList.join(' + ')}`;
+    }
+
+    message += `📦 ${line.quantity}x ${itemLine}\n`;
+
+    const extrasList = order.extras
+      .map((id) =>
+        isWaakye ? EXTRAS.find((e) => e.id === id) : BREAKFAST_EXTRAS.find((e) => e.id === id)
+      )
+      .filter(Boolean)
+      .map((e) => e!.name);
+
+    if (extrasList.length > 0) {
+      message += `   Extras: ${extrasList.join(', ')}\n`;
+    }
+
+    const unitPrice = isWaakye
+      ? waakyeItemPrice(order as OrderItem)
+      : breakfastItemPrice(order as Breakfast);
+    message += `   GH₵${unitPrice * line.quantity}\n\n`;
+  });
+
+  message += `🚚 ${deliveryMode === 'delivery' ? 'Delivery' : 'Pickup'}`;
+
+  if (customerPhone) {
+    message += `\n📞 Phone: ${customerPhone}`;
+  }
+
+  if (deliveryMode === 'delivery' && customerLocation) {
+    message += `\n📍 Location: ${customerLocation}`;
+  }
+
+  message += `\n\n💰 *Total: GH₵${totalPrice}*`;
+  message += `\n\n⚡ Sent from Waakye Plug`;
+
+  return message;
 }
 
 // ─── Spin Wheel popup ─────────────────────────────────────────────────────────
@@ -245,8 +321,9 @@ function SendConfirmDialog({
 }
 
 // ─── Main ConfirmationScreen ──────────────────────────────────────────────────
-export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
+export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
   const { phone } = useUser();
+  const { lines, deliveryMode, customerPhone, customerLocation, totalPrice } = useCart();
 
   // Flow state only — no duplicate state for props
   const [step, setStep] = useState<'spin' | 'review' | 'sending'>('spin');
@@ -254,11 +331,8 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, poin
   const [copied, setCopied] = useState(false);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
 
-  // Build message with reward injected if won
-  const baseMessage =
-    orderType === 'waakye'
-      ? formatOrderMessage(order as OrderItem)
-      : formatBreakfastMessage(order as Breakfast);
+  // Build message from every cart line, not a single order
+  const baseMessage = formatCartMessage({ lines, deliveryMode, customerPhone, customerLocation, totalPrice });
 
   const message = wonReward
     ? baseMessage.replace(
@@ -299,7 +373,13 @@ export function ConfirmationScreen({ order, orderType, onDone, onSaveOrder, poin
     setShowSendConfirm(false);
     setStep('sending');
     setTimeout(() => {
-      onSaveOrder(order);
+      // Save each cart line to order history separately.
+      // Assumes saveOrder/StoredOrder distinguishes waakye vs breakfast via
+      // a `type` field the same way OrderHistoryScreen's onOrderAgain checks
+      // it — flag this to me if saved history looks wrong.
+      lines.forEach((line) => {
+        onSaveOrder({ ...line.order, type: line.type });
+      });
       onDone();
     }, 800);
   }
