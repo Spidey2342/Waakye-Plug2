@@ -100,7 +100,10 @@ export async function recordOrder(phone: string, username: string, orderTotal: n
   // Use the canonical player row's own user_id for the `orders` FK, not the
   // caller's local device id — the two can differ once a phone number gets
   // matched to an existing account created from a different device.
-  await supabase.from('orders').insert({ user_id: updated.user_id, points_earned: pointsEarned })
+  // Its own dedicated log table — this was previously pointed at "orders"
+  // (the real transactional table), which it could never actually write
+  // to since that table requires customer_id/vendor_id/items/etc.
+  await supabase.from('points_earned_log').insert({ phone, points_earned: pointsEarned })
 
   return { player: updated, pointsEarned, streakUpdated, newStreak }
 }
