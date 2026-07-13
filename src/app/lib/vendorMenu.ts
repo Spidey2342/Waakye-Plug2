@@ -5,17 +5,36 @@ export type MenuItem = {
   vendor_id: string;
   category: 'base' | 'protein' | 'extra' | 'drink' | 'breakfast_item' | 'combo';
   name: string;
+  description: string | null;
   price: number; // exact price if pricing_type is 'fixed', minimum price if 'variable'
   pricing_type: 'fixed' | 'variable';
   image_url: string | null;
   is_available: boolean;
 };
 
-// Waakye Plug's own vendor row — single-shop mode for now. When multi-vendor
-// browsing lands later, this becomes a parameter instead of a constant.
-export const VENDOR_ID = '88efc36d-614f-4018-8059-76e83098b0ed';
+export type Vendor = {
+  id: string;
+  business_name: string;
+  description: string | null;
+  location: string | null;
+  is_open: boolean;
+};
 
-export async function getVendorMenu(vendorId: string = VENDOR_ID): Promise<MenuItem[]> {
+// Any approved vendor — this replaces the old hardcoded single VENDOR_ID.
+// Customers now pick a vendor via VendorSelectScreen instead of always
+// landing on one fixed shop.
+export async function getApprovedVendors(): Promise<Vendor[]> {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('id, business_name, description, location, is_open')
+    .eq('status', 'approved')
+    .order('business_name', { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []) as Vendor[];
+}
+
+export async function getVendorMenu(vendorId: string): Promise<MenuItem[]> {
   const { data, error } = await supabase
     .from('vendor_menu_items')
     .select('*')

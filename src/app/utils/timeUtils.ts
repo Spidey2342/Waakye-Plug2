@@ -19,7 +19,7 @@ export function checkOrderingStatus(): OrderingStatus {
   if (DEMO_MODE) {
     return {
       isOpen: true,
-      timeUntilClose: 60 * 60 * 1000,
+      timeUntilClose: 0,
       timeUntilOpen: 0
     };
   }
@@ -35,7 +35,7 @@ export function checkOrderingStatus(): OrderingStatus {
   const openTime = 0;
 
   // 8:00 AM
-  const closeTime = 23* 60 + 35 ;
+  const closeTime = 0 ;
       
   
   const isOpen = currentTime >= openTime && currentTime < closeTime;

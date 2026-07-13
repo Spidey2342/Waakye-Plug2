@@ -12,8 +12,10 @@ import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen'
 import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen';
 import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
+import { VendorSelectScreen } from '@/app/components/screens/VendorSelectScreen';
 import { useUser } from '@/app/context/UserContext';
 import { CartProvider, useCart } from '@/app/context/CartContext';
+import { VendorProvider, useVendor } from '@/app/context/VendorContext';
 import { FloatingCartButton } from '@/app/components/FloatingCartButton';
 import { saveOrder } from '@/app/utils/orderHistory';
 import { recordOrder } from '@/app/lib/game-service';
@@ -28,7 +30,9 @@ type OrderType = 'waakye' | 'breakfast';
 export default function App() {
   return (
     <CartProvider>
-      <AppContent />
+      <VendorProvider>
+        <AppContent />
+      </VendorProvider>
     </CartProvider>
   );
 }
@@ -36,6 +40,7 @@ export default function App() {
 function AppContent() {
   const { hasUser, phone, username, ready } = useUser();
   const { addToCart, lines, clearCart } = useCart();
+  const { selectedVendor } = useVendor();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
@@ -95,6 +100,16 @@ function AppContent() {
       <>
         <Toaster position="top-center" richColors />
         <UsernameScreen />
+      </>
+    );
+  }
+
+  // ── Vendor gate — pick who you're ordering from before browsing a menu ─────
+  if (!selectedVendor) {
+    return (
+      <>
+        <Toaster position="top-center" richColors />
+        <VendorSelectScreen onSelect={() => setCurrentScreen('landing')} />
       </>
     );
   }
