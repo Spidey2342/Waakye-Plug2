@@ -34,7 +34,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { hasUser, phone, username } = useUser();
+  const { hasUser, phone, username, ready } = useUser();
   const { addToCart, lines, clearCart } = useCart();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -76,6 +76,18 @@ function AppContent() {
 
     return () => clearInterval(interval);
   }, [currentScreen]);
+
+  // ── Wait for the anonymous session + profile lookup to resolve ─────────────
+  if (!ready) {
+    return (
+      <>
+        <Toaster position="top-center" richColors />
+        <div className="min-h-[100dvh] bg-[#fefaf4] flex items-center justify-center">
+          <div className="text-4xl animate-pulse">🍚</div>
+        </div>
+      </>
+    );
+  }
 
   // ── Username gate — show before anything else ──────────────────────────────
   if (!hasUser) {

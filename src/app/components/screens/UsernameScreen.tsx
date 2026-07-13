@@ -40,7 +40,13 @@ export function UsernameScreen() {
     setError('')
     setLoading(true)
     await new Promise(r => setTimeout(r, 300))
-    setUser(trimmedName, formattedPhone)
+    try {
+      await setUser(trimmedName, formattedPhone)
+    } catch {
+      setError('Something went wrong saving your details. Please try again.')
+      setLoading(false)
+      return
+    }
     setLoading(false)
   }
 
