@@ -1,7 +1,8 @@
 import { motion } from 'motion/react';
 import { CountdownTimer } from '@/app/components/CountdownTimer';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { ArrowRight, Trophy, Clock, Soup, Croissant } from 'lucide-react';
+import { ArrowRight, Trophy, Clock, Soup, Croissant, Store } from 'lucide-react';
+import { useVendor } from '@/app/context/VendorContext';
 
 interface LandingScreenProps {
   timeUntilClose: number;
@@ -9,6 +10,7 @@ interface LandingScreenProps {
   onBuild: () => void;
   onTimerComplete: () => void;
   onRewards: () => void;
+  onSwitchVendor: () => void;
 }
 
 export function LandingScreen({
@@ -17,7 +19,10 @@ export function LandingScreen({
   onBuild,
   onTimerComplete,
   onRewards,
+  onSwitchVendor,
 }: LandingScreenProps) {
+  const { selectedVendor } = useVendor();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -34,13 +39,24 @@ export function LandingScreen({
         >
           <div>
             <p className="text-xs text-gray-500">Good morning</p>
-            <p className="font-bold text-gray-900 text-lg">Waakye Plug</p>
+            <p className="font-bold text-gray-900 text-lg">{selectedVendor?.business_name ?? 'Waakye Plug'}</p>
           </div>
           <div className="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
             Open now
           </div>
         </motion.div>
+
+        {/* Switch vendor */}
+        <div className="px-5 -mt-1 mb-2">
+          <button
+            onClick={onSwitchVendor}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-[#7a1d1d] transition-colors"
+          >
+            <Store className="w-3.5 h-3.5" />
+            Switch vendor
+          </button>
+        </div>
 
         {/* Hero card */}
         <motion.div

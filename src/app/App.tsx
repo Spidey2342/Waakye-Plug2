@@ -39,7 +39,7 @@ export default function App() {
 function AppContent() {
   const { hasUser, phone, username, ready } = useUser();
   const { addToCart, clearCart, itemsSubtotal } = useCart();
-  const { selectedVendor } = useVendor();
+  const { selectedVendor, clearVendor } = useVendor();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
@@ -149,6 +149,7 @@ function AppContent() {
             onBuild={() => toast('Breakfast ordering is coming soon!')}
             onTimerComplete={handleTimerComplete}
             onRewards={() => setCurrentScreen('rewards')}
+            onSwitchVendor={clearVendor}
           />
         );
 
