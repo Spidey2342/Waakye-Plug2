@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { Store, MapPin, ChevronRight, UtensilsCrossed, Loader2, LocateFixed } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Store, MapPin, Search, Loader2, LocateFixed, UtensilsCrossed } from 'lucide-react';
 import { useVendor, type Vendor } from '@/app/context/VendorContext';
 
 interface VendorSelectScreenProps {
@@ -10,12 +11,27 @@ interface VendorSelectScreenProps {
 
 export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
   const { vendors, loadingVendors, selectVendor, locationStatus, requestLocation } = useVendor();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'open' | 'nearby'>('all');
 
   function handlePick(vendor: Vendor) {
     if (!vendor.is_open) return;
     selectVendor(vendor);
     onSelect();
   }
+
+  const filteredVendors = useMemo(() => {
+    let list = vendors;
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      list = list.filter(
+        (v) => v.business_name.toLowerCase().includes(q) || v.description?.toLowerCase().includes(q)
+      );
+    }
+    if (filter === 'open') list = list.filter((v) => v.is_open);
+    if (filter === 'nearby') list = [...list].sort((a, b) => (a.distanceKm ?? 99) - (b.distanceKm ?? 99));
+    return list;
+  }, [vendors, query, filter]);
 
   // ── Location is mandatory: no location, no vendor list ─────────────────────
   if (locationStatus === 'pending') {
@@ -53,26 +69,70 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#fefaf4] px-4 py-6 [webkit-tap-highlight-color:transparent]">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-6 pt-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#7a1d1d]/10 flex items-center justify-center mx-auto mb-3">
-            <UtensilsCrossed className="w-6 h-6 text-[#7a1d1d]" />
+    <div className="min-h-[100dvh] bg-[#fefaf4] [webkit-tap-highlight-color:transparent]">
+      <div className="max-w-md mx-auto px-4 pt-6 pb-24">
+
+        {/* ── Location header, styled like the reference "current location" card ── */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-full bg-[#7a1d1d]/10 flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5 text-[#7a1d1d]" />
           </div>
-          <h1 className="font-bold text-xl">Choose a Vendor</h1>
-          <p className="text-sm text-gray-500 mt-1">Pick who you're ordering from today</p>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 font-medium">Ordering near</p>
+            <p className="font-bold text-sm truncate">Your current location</p>
+          </div>
         </div>
+
+        {/* ── Search bar ── */}
+        <div className="relative mb-4">
+          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search vendors..."
+            className="w-full bg-white border border-gray-200 rounded-2xl pl-11 pr-4 py-3 text-sm outline-none focus:border-[#7a1d1d]/40"
+          />
+        </div>
+
+        {/* ── Filter chips (stand-in for the reference's category pills) ── */}
+        <div className="flex gap-2 mb-6 overflow-x-auto no-scrollbar">
+          {([
+            { key: 'all', label: 'All' },
+            { key: 'open', label: 'Open Now' },
+            { key: 'nearby', label: 'Nearest' },
+          ] as const).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                filter === f.key ? 'bg-[#7a1d1d] text-white' : 'bg-white text-gray-500 border border-gray-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Promo / info banner, standing in for "Ongoing Offers" ── */}
+        <div className="rounded-3xl bg-[#7a1d1d] text-white p-5 mb-6 relative overflow-hidden">
+          <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/10" />
+          <p className="font-bold text-lg leading-tight mb-1">Hungry?</p>
+          <p className="text-sm text-white/80 mb-3">Pick a vendor below to start your order</p>
+        </div>
+
+        <h2 className="font-bold text-lg mb-3">Vendors Near You</h2>
 
         {loadingVendors ? (
           <p className="text-center text-sm text-gray-400 py-10">Loading vendors...</p>
-        ) : vendors.length === 0 ? (
+        ) : filteredVendors.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <UtensilsCrossed className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p className="font-medium">No vendors within 6km right now.</p>
+            <p className="font-medium">No vendors match right now.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {vendors.map((vendor, i) => (
+          /* ── Two-column grid, matching the reference's card layout ── */
+          <div className="grid grid-cols-2 gap-3">
+            {filteredVendors.map((vendor, i) => (
               <motion.button
                 key={vendor.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -80,41 +140,38 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                 transition={{ delay: i * 0.05 }}
                 onClick={() => handlePick(vendor)}
                 disabled={!vendor.is_open}
-                className={`w-full bg-white rounded-3xl shadow-sm p-3 text-left flex items-center gap-4 transition-all ${
+                className={`bg-white rounded-2xl shadow-sm overflow-hidden text-left flex flex-col transition-all ${
                   vendor.is_open ? 'hover:shadow-md hover:-translate-y-0.5' : 'opacity-60 cursor-not-allowed'
                 }`}
               >
-                <div className="w-24 h-24 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="relative h-28 bg-gray-50">
                   {vendor.logo_url ? (
                     <img src={vendor.logo_url} alt={vendor.business_name} className="w-full h-full object-cover" />
                   ) : (
-                    <Store className="w-8 h-8 text-[#7a1d1d]/40" />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Store className="w-8 h-8 text-[#7a1d1d]/30" />
+                    </div>
                   )}
+                  {/* status badge, top-left — plays the role of the reference's heart icon */}
+                  <span
+                    className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      vendor.is_open ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+                    }`}
+                  >
+                    {vendor.is_open ? 'Open' : 'Closed'}
+                  </span>
                 </div>
 
-                <div className="flex-1 min-w-0 py-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="font-bold text-base truncate">{vendor.business_name}</p>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                        vendor.is_open ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
-                      }`}
-                    >
-                      {vendor.is_open ? 'Open' : 'Closed'}
-                    </span>
-                  </div>
+                <div className="p-3 flex flex-col gap-1">
+                  <p className="font-bold text-sm leading-tight truncate">{vendor.business_name}</p>
                   {vendor.description && (
-                    <p className="text-sm text-gray-500 truncate">{vendor.description}</p>
+                    <p className="text-xs text-gray-500 truncate">{vendor.description}</p>
                   )}
-                  <div className="flex items-center gap-1 text-xs text-gray-400 mt-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {vendor.location && <span>{vendor.location}</span>}
-                    {vendor.location && <span>·</span>}
-                    <span className="font-semibold text-[#7a1d1d]">{vendor.distanceKm!.toFixed(1)} km away</span>
+                  <div className="flex items-center gap-1 text-xs text-[#7a1d1d] font-bold mt-1">
+                    <MapPin className="w-3 h-3" />
+                    {vendor.distanceKm!.toFixed(1)} km away
                   </div>
                 </div>
-
-                <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
               </motion.button>
             ))}
           </div>
