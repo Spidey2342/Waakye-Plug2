@@ -13,6 +13,7 @@ export type OrderLineItem = {
   price: number;   // unit price at time of adding
   category: MenuItem['category'];
   quantity: number; // per-unit quantity within ONE composed order (e.g. 2 eggs)
+  imageUrl?: string | null; // display-only — not part of the real orders.items shape
 };
 
 export type CartLine = {

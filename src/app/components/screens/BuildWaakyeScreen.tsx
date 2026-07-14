@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, Plus, Minus, Check } from 'lucide-react';
+import { ChevronLeft, Plus, Minus, Check, Loader2 } from 'lucide-react';
 import { useVendor } from '@/app/context/VendorContext';
 import { getVendorMenu, groupMenuByCategory } from '@/app/lib/vendorMenu';
+import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
 import type { OrderLineItem } from '@/app/context/CartContext';
 
 interface BuildWaakyeScreenProps {
@@ -77,19 +78,19 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
     if (!selectedBase) return;
 
     const items: OrderLineItem[] = [
-      { id: selectedBase.id, name: selectedBase.name, price: selectedBase.price, category: 'base', quantity: 1 },
+      { id: selectedBase.id, name: selectedBase.name, price: selectedBase.price, category: 'base', quantity: 1, imageUrl: selectedBase.image_url },
     ];
 
     Object.entries(proteinQty).forEach(([id, qty]) => {
       const item = menu.protein.find((p) => p.id === id);
       if (item && qty > 0) {
-        items.push({ id: item.id, name: item.name, price: item.price, category: 'protein', quantity: qty });
+        items.push({ id: item.id, name: item.name, price: item.price, category: 'protein', quantity: qty, imageUrl: item.image_url });
       }
     });
 
     selectedExtraIds.forEach((id) => {
       const item = menu.extra.find((e) => e.id === id);
-      if (item) items.push({ id: item.id, name: item.name, price: item.price, category: 'extra', quantity: 1 });
+      if (item) items.push({ id: item.id, name: item.name, price: item.price, category: 'extra', quantity: 1, imageUrl: item.image_url });
     });
 
     onAddToCart(items);
@@ -98,7 +99,7 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
   if (loading) {
     return (
       <div className="min-h-[100dvh] bg-[#fefaf4] flex items-center justify-center">
-        <div className="text-4xl animate-pulse">🍚</div>
+        <Loader2 size={32} className="text-[#7a1d1d] animate-spin" />
       </div>
     );
   }
@@ -148,7 +149,7 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
                           <Check className="w-3 h-3 text-white" />
                         </div>
                       )}
-                      <div className={`text-3xl mb-2 transition-transform ${isSelected ? 'scale-110' : ''}`}>🍚</div>
+                      <MenuItemThumbnail imageUrl={item.image_url} category="base" size="md" className={`mx-auto mb-2 transition-transform ${isSelected ? 'scale-110' : ''}`} />
                       <div className="font-bold text-sm">{item.name}</div>
                       <div className="text-[#7a1d1d] font-bold mt-1">GH₵{item.price}</div>
                       {item.description && <div className="text-xs text-gray-500 mt-1">{item.description}</div>}
@@ -173,9 +174,12 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
                         isActive ? 'border-[#7a1d1d] bg-[#7a1d1d]/5' : 'bg-white border-gray-200'
                       }`}
                     >
-                      <div>
-                        <div className="font-bold">{item.name}</div>
-                        <div className="text-sm text-gray-600">GH₵{item.price} each</div>
+                      <div className="flex items-center gap-3">
+                        <MenuItemThumbnail imageUrl={item.image_url} category="protein" size="sm" />
+                        <div>
+                          <div className="font-bold">{item.name}</div>
+                          <div className="text-sm text-gray-600">GH₵{item.price} each</div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -220,6 +224,7 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
                           onChange={() => toggleExtra(item.id)}
                           className="w-5 h-5 accent-[#7a1d1d]"
                         />
+                        <MenuItemThumbnail imageUrl={item.image_url} category="extra" size="sm" />
                         <div>
                           <div className="font-bold">{item.name}</div>
                           <div className="text-sm text-gray-600">+GH₵{item.price}</div>

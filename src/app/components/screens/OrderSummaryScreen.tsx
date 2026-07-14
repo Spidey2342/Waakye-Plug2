@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { ChevronLeft, Minus, Plus, Trash2, Package, Truck } from 'lucide-react';
+import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
 import { useCart, CartLine, lineUnitPrice } from '@/app/context/CartContext';
 import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
 
@@ -87,7 +88,7 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="text-2xl">🍚</div>
+                      <MenuItemThumbnail imageUrl={baseItem(line)?.imageUrl} category={baseItem(line)?.category ?? 'base'} size="md" />
                       <div>
                         <div className="font-bold">{baseItem(line)?.name ?? 'Item'}</div>
                         <div className="text-sm text-gray-600">GH₵{lineUnitPrice(line)} each</div>

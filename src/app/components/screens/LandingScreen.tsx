@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { CountdownTimer } from '@/app/components/CountdownTimer';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { ArrowRight, Trophy, Clock } from 'lucide-react';
+import { ArrowRight, Trophy, Clock, Soup, Croissant } from 'lucide-react';
 
 interface LandingScreenProps {
   timeUntilClose: number;
@@ -93,8 +93,8 @@ export function LandingScreen({
               onClick={onStart}
               className="bg-white rounded-2xl border-2 border-gray-100 p-4 text-left hover:border-[#7a1d1d]/30 transition-colors"
             >
-              <div className="w-11 h-11 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center mb-3 text-2xl">
-                🍚
+              <div className="w-11 h-11 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center mb-3">
+                <Soup size={22} className="text-[#7a1d1d]" />
               </div>
               <p className="font-bold text-sm">Waakye Bowl</p>
               <p className="text-xs text-gray-500 mt-0.5">Build your own</p>
@@ -111,8 +111,8 @@ export function LandingScreen({
               onClick={onBuild}
               className="bg-white rounded-2xl border-2 border-gray-100 p-4 text-left opacity-60"
             >
-              <div className="w-11 h-11 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center mb-3 text-2xl">
-                🍳
+              <div className="w-11 h-11 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center mb-3">
+                <Croissant size={22} className="text-[#7a1d1d]" />
               </div>
               <p className="font-bold text-sm">Breakfast</p>
               <p className="text-xs text-gray-500 mt-0.5">Jollof & drinks</p>
