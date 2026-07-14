@@ -14,9 +14,10 @@ const SIZE_CLASSES = {
   sm: 'w-10 h-10',
   md: 'w-14 h-14',
   lg: 'w-16 h-16',
+  full: 'w-full h-full',
 } as const;
 
-const ICON_SIZE = { sm: 16, md: 22, lg: 26 } as const;
+const ICON_SIZE = { sm: 16, md: 22, lg: 26, full: 32 } as const;
 
 interface MenuItemThumbnailProps {
   imageUrl?: string | null;

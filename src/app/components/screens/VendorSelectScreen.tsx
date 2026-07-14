@@ -57,9 +57,12 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                   {vendor.description && (
                     <p className="text-xs text-gray-500 truncate mt-0.5">{vendor.description}</p>
                   )}
-                  {vendor.location && (
+                  {(vendor.location || vendor.distanceKm != null) && (
                     <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" /> {vendor.location}
+                      <MapPin className="w-3 h-3" />
+                      {vendor.location}
+                      {vendor.location && vendor.distanceKm != null && ' · '}
+                      {vendor.distanceKm != null && `${vendor.distanceKm.toFixed(1)} km away`}
                     </p>
                   )}
                 </div>
