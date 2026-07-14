@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { Store, MapPin, ChevronRight } from 'lucide-react';
+import { Store, MapPin, ChevronRight, UtensilsCrossed } from 'lucide-react';
 import { useVendor, type Vendor } from '@/app/context/VendorContext';
 
 interface VendorSelectScreenProps {
@@ -21,7 +21,9 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
     <div className="min-h-[100dvh] bg-[#fefaf4] px-4 py-6 [webkit-tap-highlight-color:transparent]">
       <div className="max-w-md mx-auto">
         <div className="text-center mb-6 pt-4">
-          <div className="text-4xl mb-2">🍚</div>
+          <div className="w-12 h-12 rounded-2xl bg-[#7a1d1d]/10 flex items-center justify-center mx-auto mb-3">
+            <UtensilsCrossed className="w-6 h-6 text-[#7a1d1d]" />
+          </div>
           <h1 className="font-bold text-xl">Choose a Vendor</h1>
           <p className="text-sm text-gray-500 mt-1">Pick who you're ordering from today</p>
         </div>
@@ -40,13 +42,18 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                 transition={{ delay: i * 0.05 }}
                 onClick={() => handlePick(vendor)}
                 disabled={!vendor.is_open}
-                className={`w-full bg-white rounded-2xl border-2 p-4 text-left flex items-center gap-3 transition-colors ${
+                className={`w-full bg-white rounded-2xl border-2 p-3 text-left flex items-center gap-4 transition-colors ${
                   vendor.is_open ? 'border-gray-100 hover:border-[#7a1d1d]/30' : 'border-gray-100 opacity-50 cursor-not-allowed'
                 }`}
               >
-                <div className="w-12 h-12 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center shrink-0">
-                  <Store className="w-5 h-5 text-[#7a1d1d]" />
+                <div className="w-20 h-20 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                  {vendor.logo_url ? (
+                    <img src={vendor.logo_url} alt={vendor.business_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Store className="w-7 h-7 text-[#7a1d1d]" />
+                  )}
                 </div>
+
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-sm truncate">{vendor.business_name}</p>
@@ -66,6 +73,7 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                     </p>
                   )}
                 </div>
+
                 <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
               </motion.button>
             ))}

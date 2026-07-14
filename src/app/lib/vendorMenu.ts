@@ -20,6 +20,7 @@ export type Vendor = {
   is_open: boolean;
   latitude: number | null;
   longitude: number | null;
+  logo_url: string | null;
 };
 
 // Any approved vendor — this replaces the old hardcoded single VENDOR_ID.
@@ -28,7 +29,7 @@ export type Vendor = {
 export async function getApprovedVendors(): Promise<Vendor[]> {
   const { data, error } = await supabase
     .from('vendors')
-    .select('id, business_name, description, location, is_open, latitude, longitude')
+    .select('id, business_name, description, location, is_open, latitude, longitude, logo_url')
     .eq('status', 'approved')
     .order('business_name', { ascending: true });
 
