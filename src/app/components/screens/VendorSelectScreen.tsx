@@ -31,9 +31,12 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
         {loadingVendors ? (
           <p className="text-center text-sm text-gray-400 py-10">Loading vendors...</p>
         ) : vendors.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-10">No vendors available right now.</p>
+          <div className="text-center py-16 text-gray-400">
+            <UtensilsCrossed className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+            <p className="font-medium">No vendors within 6km right now.</p>
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {vendors.map((vendor, i) => (
               <motion.button
                 key={vendor.id}
@@ -42,39 +45,45 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                 transition={{ delay: i * 0.05 }}
                 onClick={() => handlePick(vendor)}
                 disabled={!vendor.is_open}
-                className={`w-full bg-white rounded-2xl border-2 p-3 text-left flex items-center gap-4 transition-colors ${
-                  vendor.is_open ? 'border-gray-100 hover:border-[#7a1d1d]/30' : 'border-gray-100 opacity-50 cursor-not-allowed'
+                className={`w-full bg-white rounded-3xl shadow-sm p-3 text-left flex items-center gap-4 transition-all ${
+                  vendor.is_open ? 'hover:shadow-md hover:-translate-y-0.5' : 'opacity-60 cursor-not-allowed'
                 }`}
               >
-                <div className="w-20 h-20 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-24 h-24 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 overflow-hidden">
                   {vendor.logo_url ? (
                     <img src={vendor.logo_url} alt={vendor.business_name} className="w-full h-full object-cover" />
                   ) : (
-                    <Store className="w-7 h-7 text-[#7a1d1d]" />
+                    <Store className="w-8 h-8 text-[#7a1d1d]/40" />
                   )}
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold text-sm truncate">{vendor.business_name}</p>
-                    {!vendor.is_open && (
-                      <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">Closed</span>
-                    )}
+                <div className="flex-1 min-w-0 py-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-bold text-base truncate">{vendor.business_name}</p>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        vendor.is_open ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      {vendor.is_open ? 'Open' : 'Closed'}
+                    </span>
                   </div>
                   {vendor.description && (
-                    <p className="text-xs text-gray-500 truncate mt-0.5">{vendor.description}</p>
+                    <p className="text-sm text-gray-500 truncate">{vendor.description}</p>
                   )}
                   {(vendor.location || vendor.distanceKm != null) && (
-                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" />
-                      {vendor.location}
-                      {vendor.location && vendor.distanceKm != null && ' · '}
-                      {vendor.distanceKm != null && `${vendor.distanceKm.toFixed(1)} km away`}
-                    </p>
+                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-1.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>{vendor.location}</span>
+                      {vendor.location && vendor.distanceKm != null && <span>·</span>}
+                      {vendor.distanceKm != null && (
+                        <span className="font-semibold text-[#7a1d1d]">{vendor.distanceKm.toFixed(1)} km away</span>
+                      )}
+                    </div>
                   )}
                 </div>
 
-                <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+                <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
               </motion.button>
             ))}
           </div>

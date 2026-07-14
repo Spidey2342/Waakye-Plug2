@@ -15,6 +15,8 @@ interface VendorContextType {
 
 const VendorContext = createContext<VendorContextType | undefined>(undefined);
 
+const MAX_DISTANCE_KM = 6;
+
 export function VendorProvider({ children }: { children: ReactNode }) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
@@ -61,14 +63,19 @@ export function VendorProvider({ children }: { children: ReactNode }) {
           : null,
     }));
 
-    // Vendors with a known distance come first, nearest to farthest.
-    // Vendors with no location set stay at the end, in their existing order.
-    return withDistance.sort((a, b) => {
-      if (a.distanceKm == null && b.distanceKm == null) return 0;
-      if (a.distanceKm == null) return 1;
-      if (b.distanceKm == null) return -1;
-      return a.distanceKm - b.distanceKm;
-    });
+    // Vendors with a known distance come first, nearest to farthest, and
+    // anything farther than MAX_DISTANCE_KM is dropped entirely. Vendors
+    // with no GPS set yet stay visible (excluding them outright would empty
+    // the list while adoption of the location feature is still low) but
+    // sort after known-distance ones.
+    return withDistance
+      .filter((v) => v.distanceKm == null || v.distanceKm <= MAX_DISTANCE_KM)
+      .sort((a, b) => {
+        if (a.distanceKm == null && b.distanceKm == null) return 0;
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
   }, [vendors, customerCoords]);
 
   function selectVendor(vendor: Vendor) {
