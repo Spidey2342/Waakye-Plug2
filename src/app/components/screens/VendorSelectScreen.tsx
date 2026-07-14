@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { Store, MapPin, ChevronRight, UtensilsCrossed } from 'lucide-react';
+import { Store, MapPin, ChevronRight, UtensilsCrossed, Loader2, LocateFixed } from 'lucide-react';
 import { useVendor, type Vendor } from '@/app/context/VendorContext';
 
 interface VendorSelectScreenProps {
@@ -9,12 +9,47 @@ interface VendorSelectScreenProps {
 }
 
 export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
-  const { vendors, loadingVendors, selectVendor } = useVendor();
+  const { vendors, loadingVendors, selectVendor, locationStatus, requestLocation } = useVendor();
 
   function handlePick(vendor: Vendor) {
     if (!vendor.is_open) return;
     selectVendor(vendor);
     onSelect();
+  }
+
+  // ── Location is mandatory: no location, no vendor list ─────────────────────
+  if (locationStatus === 'pending') {
+    return (
+      <div className="min-h-[100dvh] bg-[#fefaf4] flex flex-col items-center justify-center px-6 text-center">
+        <Loader2 className="w-8 h-8 text-[#7a1d1d] animate-spin mb-4" />
+        <p className="font-bold">Finding vendors near you...</p>
+      </div>
+    );
+  }
+
+  if (locationStatus === 'denied' || locationStatus === 'unavailable') {
+    return (
+      <div className="min-h-[100dvh] bg-[#fefaf4] flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-[#7a1d1d]/10 flex items-center justify-center mb-4">
+          <LocateFixed className="w-7 h-7 text-[#7a1d1d]" />
+        </div>
+        <h1 className="font-bold text-xl mb-2">We need your location</h1>
+        <p className="text-sm text-gray-500 max-w-xs mb-1">
+          We only show vendors within 6km of you, so we can't find anyone nearby without it.
+        </p>
+        {locationStatus === 'denied' && (
+          <p className="text-xs text-gray-400 max-w-xs mb-5">
+            Looks like location access was blocked — you may need to allow it in your browser's site settings, then try again.
+          </p>
+        )}
+        <button
+          onClick={requestLocation}
+          className="bg-[#7a1d1d] text-white px-6 py-3 rounded-2xl font-bold hover:bg-[#6a1717] transition-colors"
+        >
+          Enable Location
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -71,16 +106,12 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                   {vendor.description && (
                     <p className="text-sm text-gray-500 truncate">{vendor.description}</p>
                   )}
-                  {(vendor.location || vendor.distanceKm != null) && (
-                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>{vendor.location}</span>
-                      {vendor.location && vendor.distanceKm != null && <span>·</span>}
-                      {vendor.distanceKm != null && (
-                        <span className="font-semibold text-[#7a1d1d]">{vendor.distanceKm.toFixed(1)} km away</span>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mt-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {vendor.location && <span>{vendor.location}</span>}
+                    {vendor.location && <span>·</span>}
+                    <span className="font-semibold text-[#7a1d1d]">{vendor.distanceKm!.toFixed(1)} km away</span>
+                  </div>
                 </div>
 
                 <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
