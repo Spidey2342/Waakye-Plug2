@@ -1,30 +1,32 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
-import {
-  OrderItem,
-  Breakfast,
-  BOWL_SIZES,
-  PROTEINS,
-  EXTRAS,
-  S_Breakfast,
-  BREAKFAST_EXTRAS,
-  DELIVERY_FEE,
-  SERVICE_FEE,
-} from '@/app/types/orderTypes';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
+import type { MenuItem } from '@/app/lib/vendorMenu';
+
+// Flat shape matching exactly what orders.items needs in Supabase —
+// building the cart around this from the start means checkout (Phase 4)
+// doesn't need to convert anything.
+export type OrderLineItem = {
+  id: string;      // vendor_menu_items id
+  name: string;
+  price: number;   // unit price at time of adding
+  category: MenuItem['category'];
+  quantity: number; // per-unit quantity within ONE composed order (e.g. 2 eggs)
+};
 
 export type CartLine = {
-  id: string;
-  type: 'waakye' | 'breakfast';
-  order: OrderItem | Breakfast;
-  quantity: number;
+  id: string;               // client-side cart line id
+  vendorId: string;
+  items: OrderLineItem[];   // composition for one order: base (qty 1) + chosen proteins/extras
+  quantity: number;         // how many of this exact composed order
 };
 
 type DeliveryMode = 'pickup' | 'delivery';
 
 interface CartContextType {
   lines: CartLine[];
-  addToCart: (type: 'waakye' | 'breakfast', order: OrderItem | Breakfast) => void;
+  addToCart: (vendorId: string, items: OrderLineItem[]) => void;
   updateQuantity: (id: string, delta: number) => void;
   removeLine: (id: string) => void;
   clearCart: () => void;
@@ -43,31 +45,8 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Item price ONLY — bowl/breakfast + proteins + extras, no fees.
-// SERVICE_FEE / DELIVERY_FEE are applied once for the whole cart in
-// totalPrice below, since orderTypes.ts's calculateOrderTotal /
-// calculateBreakfastTotal already bake those fees into a single item
-// and would double-count them if reused per line here.
-export function waakyeItemPrice(order: OrderItem): number {
-  let total = BOWL_SIZES[order.size].price;
-  Object.entries(order.proteins).forEach(([id, qty]) => {
-    const protein = PROTEINS.find((p) => p.id === id);
-    if (protein) total += protein.price * qty;
-  });
-  order.extras.forEach((id) => {
-    const extra = EXTRAS.find((e) => e.id === id);
-    if (extra) total += extra.price;
-  });
-  return total;
-}
-
-export function breakfastItemPrice(order: Breakfast): number {
-  let total = S_Breakfast[order.drink].price;
-  order.extras.forEach((id) => {
-    const extra = BREAKFAST_EXTRAS.find((e) => e.id === id);
-    if (extra) total += extra.price;
-  });
-  return total;
+export function lineUnitPrice(line: CartLine): number {
+  return line.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -76,17 +55,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerLocation, setCustomerLocation] = useState('');
 
-  const addToCart = (type: 'waakye' | 'breakfast', order: OrderItem | Breakfast) => {
-    const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setLines((prev) => [...prev, { id, type, order, quantity: 1 }]);
+  const addToCart = (vendorId: string, items: OrderLineItem[]) => {
+    const id = `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setLines((prev) => [...prev, { id, vendorId, items, quantity: 1 }]);
   };
 
   const updateQuantity = (id: string, delta: number) => {
     setLines((prev) =>
       prev
-        .map((line) =>
-          line.id === id ? { ...line, quantity: Math.max(0, line.quantity + delta) } : line
-        )
+        .map((line) => (line.id === id ? { ...line, quantity: Math.max(0, line.quantity + delta) } : line))
         .filter((line) => line.quantity > 0)
     );
   };
@@ -100,38 +77,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCustomerLocation('');
   };
 
-  const toggleDeliveryMode = () =>
-    setDeliveryMode((m) => (m === 'pickup' ? 'delivery' : 'pickup'));
-
-  const lineUnitPrice = (line: CartLine) =>
-    line.type === 'waakye'
-      ? waakyeItemPrice(line.order as OrderItem)
-      : breakfastItemPrice(line.order as Breakfast);
+  const toggleDeliveryMode = () => setDeliveryMode((m) => (m === 'pickup' ? 'delivery' : 'pickup'));
 
   const totalItems = lines.reduce((sum, l) => sum + l.quantity, 0);
   const itemsSubtotal = lines.reduce((sum, l) => sum + lineUnitPrice(l) * l.quantity, 0);
   const totalPrice =
-    lines.length === 0
-      ? 0
-      : itemsSubtotal + (deliveryMode === 'delivery' ? DELIVERY_FEE : 0) + SERVICE_FEE;
+    lines.length === 0 ? 0 : itemsSubtotal + (deliveryMode === 'delivery' ? DELIVERY_FEE : 0) + SERVICE_FEE;
 
   return (
     <CartContext.Provider
       value={{
-        lines,
-        addToCart,
-        updateQuantity,
-        removeLine,
-        clearCart,
-        deliveryMode,
-        toggleDeliveryMode,
-        customerPhone,
-        setCustomerPhone,
-        customerLocation,
-        setCustomerLocation,
-        itemsSubtotal,
-        totalItems,
-        totalPrice,
+        lines, addToCart, updateQuantity, removeLine, clearCart,
+        deliveryMode, toggleDeliveryMode,
+        customerPhone, setCustomerPhone,
+        customerLocation, setCustomerLocation,
+        itemsSubtotal, totalItems, totalPrice,
       }}
     >
       {children}

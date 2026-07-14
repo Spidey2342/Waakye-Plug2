@@ -1,17 +1,8 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageCircle, Copy, Check, RotateCw, Gift, AlertCircle } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
-import {
-  OrderItem,
-  Breakfast,
-  BOWL_SIZES,
-  S_Breakfast,
-  PROTEINS,
-  EXTRAS,
-  BREAKFAST_EXTRAS,
-} from '@/app/types/orderTypes';
 import { useUser } from '@/app/context/UserContext';
-import { useCart, CartLine, waakyeItemPrice, breakfastItemPrice } from '@/app/context/CartContext';
+import { useCart, CartLine, lineUnitPrice } from '@/app/context/CartContext';
 import { pickReward, recordSpin } from '@/app/lib/game-service';
 import { SPIN_REWARDS, type SpinReward } from '@/app/lib/supabase';
 import { toast } from 'sonner';
@@ -40,41 +31,16 @@ function formatCartMessage({
   let message = `🍚 *WAAKYE PLUG ORDER*\n\n`;
 
   lines.forEach((line) => {
-    const isWaakye = line.type === 'waakye';
-    const order = line.order;
+    const base = line.items.find((i) => i.category === 'base' || i.category === 'combo');
+    const others = line.items.filter((i) => i.category !== 'base' && i.category !== 'combo');
 
-    let itemLine = isWaakye
-      ? `${BOWL_SIZES[(order as OrderItem).size].name} Waakye`
-      : S_Breakfast[(order as Breakfast).drink].name;
-
-    if (isWaakye) {
-      const proteinList: string[] = [];
-      Object.entries((order as OrderItem).proteins).forEach(([id, qty]) => {
-        const protein = PROTEINS.find((p) => p.id === id);
-        if (protein && qty > 0) {
-          proteinList.push(qty > 1 ? `${qty}x ${protein.name}` : protein.name);
-        }
-      });
-      if (proteinList.length > 0) itemLine += ` + ${proteinList.join(' + ')}`;
+    message += `📦 ${line.quantity}x ${base?.name ?? 'Item'}`;
+    if (others.length > 0) {
+      message += ` + ${others.map((i) => (i.quantity > 1 ? `${i.quantity}x ${i.name}` : i.name)).join(' + ')}`;
     }
+    message += `\n`;
 
-    message += `📦 ${line.quantity}x ${itemLine}\n`;
-
-    const extrasList = order.extras
-      .map((id) =>
-        isWaakye ? EXTRAS.find((e) => e.id === id) : BREAKFAST_EXTRAS.find((e) => e.id === id)
-      )
-      .filter(Boolean)
-      .map((e) => e!.name);
-
-    if (extrasList.length > 0) {
-      message += `   Extras: ${extrasList.join(', ')}\n`;
-    }
-
-    const unitPrice = isWaakye
-      ? waakyeItemPrice(order as OrderItem)
-      : breakfastItemPrice(order as Breakfast);
-    message += `   GH₵${unitPrice * line.quantity}\n\n`;
+    message += `   GH₵${lineUnitPrice(line) * line.quantity}\n\n`;
   });
 
   message += `🚚 ${deliveryMode === 'delivery' ? 'Delivery' : 'Pickup'}`;
@@ -377,8 +343,11 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
       // Assumes saveOrder/StoredOrder distinguishes waakye vs breakfast via
       // a `type` field the same way OrderHistoryScreen's onOrderAgain checks
       // it — flag this to me if saved history looks wrong.
+      // Saving each cart line's flattened items. This still hasn't been
+      // checked against orderHistory.ts's actual expected shape (still don't
+      // have that file) — flag it to me if saved history looks wrong.
       lines.forEach((line) => {
-        onSaveOrder({ ...line.order, type: line.type });
+        onSaveOrder({ id: line.id, items: line.items, quantity: line.quantity });
       });
       onDone();
     }, 800);

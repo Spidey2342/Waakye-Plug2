@@ -109,15 +109,15 @@ export function LandingScreen({
               transition={{ delay: 0.25 }}
               whileTap={{ scale: 0.97 }}
               onClick={onBuild}
-              className="bg-white rounded-2xl border-2 border-gray-100 p-4 text-left hover:border-[#7a1d1d]/30 transition-colors"
+              className="bg-white rounded-2xl border-2 border-gray-100 p-4 text-left opacity-60"
             >
               <div className="w-11 h-11 rounded-xl bg-[#7a1d1d]/10 flex items-center justify-center mb-3 text-2xl">
                 🍳
               </div>
               <p className="font-bold text-sm">Breakfast</p>
               <p className="text-xs text-gray-500 mt-0.5">Jollof & drinks</p>
-              <div className="flex items-center gap-1 text-[#7a1d1d] text-xs font-bold mt-3">
-                Order now <ArrowRight className="w-3.5 h-3.5" />
+              <div className="text-gray-400 text-xs font-bold mt-3">
+                Coming soon
               </div>
             </motion.button>
           </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { checkOrderingStatus } from '@/app/utils/timeUtils';
-import { OrderItem, Breakfast } from '@/app/types/orderTypes';
+import { Breakfast } from '@/app/types/orderTypes';
 import { LandingScreen } from '@/app/components/screens/LandingScreen';
 import { ClosedScreen } from '@/app/components/screens/ClosedScreen';
 import { BuildWaakyeScreen } from '@/app/components/screens/BuildWaakyeScreen';
@@ -19,8 +19,7 @@ import { VendorProvider, useVendor } from '@/app/context/VendorContext';
 import { FloatingCartButton } from '@/app/components/FloatingCartButton';
 import { saveOrder } from '@/app/utils/orderHistory';
 import { recordOrder } from '@/app/lib/game-service';
-import { BOWL_SIZES } from '@/app/types/orderTypes';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
 type OrderType = 'waakye' | 'breakfast';
@@ -39,7 +38,7 @@ export default function App() {
 
 function AppContent() {
   const { hasUser, phone, username, ready } = useUser();
-  const { addToCart, lines, clearCart } = useCart();
+  const { addToCart, clearCart, itemsSubtotal } = useCart();
   const { selectedVendor } = useVendor();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -48,12 +47,6 @@ function AppContent() {
   const [canSpin, setCanSpin] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(0);
   const [spinsRemaining, setSpinsRemaining] = useState(3);
-  const [waakyeOrder, setWaakyeOrder] = useState<OrderItem>({
-    size: 'medium',
-    proteins: {},
-    extras: [],
-    deliveryMode: 'pickup',
-  });
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
     drink: 'tea',
     extras: [],
@@ -114,30 +107,18 @@ function AppContent() {
     );
   }
 
-  // ── "Continue" on a build screen now means "add this to the cart" ──────────
-  function handleAddToCart() {
-    addToCart(orderType, orderType === 'waakye' ? waakyeOrder : breakfastOrder);
-
-    // reset the builder so the next item starts fresh
-    if (orderType === 'waakye') {
-      setWaakyeOrder({ size: 'medium', proteins: {}, extras: [], deliveryMode: 'pickup' });
-    } else {
-      setBreakfastOrder({ drink: 'tea', extras: [], deliveryMode: 'pickup' });
-    }
-
+  // ── Waakye builder → cart. Breakfast temporarily disabled (see LandingScreen
+  // wiring below) since SBlinkspage hasn't been converted to this model yet.
+  function handleWaakyeAddToCart(items: import('@/app/context/CartContext').OrderLineItem[]) {
+    if (!selectedVendor) return;
+    addToCart(selectedVendor.id, items);
     setCurrentScreen('summary');
   }
 
   // ── Order confirmed: save + record points across the whole cart ────────────
   async function handleOrderConfirmed() {
     try {
-      const orderValue = lines.reduce((sum, line) => {
-        const unitPrice =
-          line.type === 'waakye' ? BOWL_SIZES[(line.order as OrderItem).size].price : 1;
-        return sum + unitPrice * line.quantity;
-      }, 0);
-
-      const result = await recordOrder(phone, username, orderValue);
+      const result = await recordOrder(phone, username, itemsSubtotal);
       setPointsEarned(result.pointsEarned);
       setSpinsRemaining(result.player.spins_remaining ?? 3);
     } catch (e) {
@@ -165,7 +146,7 @@ function AppContent() {
           <LandingScreen
             timeUntilClose={orderingStatus.timeUntilClose}
             onStart={() => { setOrderType('waakye'); setCurrentScreen('build'); }}
-            onBuild={() => { setOrderType('breakfast'); setCurrentScreen('build2'); }}
+            onBuild={() => toast('Breakfast ordering is coming soon!')}
             onTimerComplete={handleTimerComplete}
             onRewards={() => setCurrentScreen('rewards')}
           />
@@ -177,20 +158,22 @@ function AppContent() {
       case 'build':
         return (
           <BuildWaakyeScreen
-            order={waakyeOrder}
-            onUpdateOrder={setWaakyeOrder}
             onBack={() => setCurrentScreen('landing')}
-            onContinue={handleAddToCart}
+            onAddToCart={handleWaakyeAddToCart}
           />
         );
 
       case 'build2':
+        // Dormant for now — breakfast hasn't been converted to the DB-driven
+        // cart model yet, and this screen is unreachable from LandingScreen
+        // until it is. Left in place rather than deleted so SBlinkspage isn't
+        // silently broken if it's reached some other way.
         return (
           <SBlinkspage
             order={breakfastOrder}
             onUpdateOrder={setBreakfastOrder}
             onBack={() => setCurrentScreen('landing')}
-            onContinue={handleAddToCart}
+            onContinue={() => setCurrentScreen('landing')}
           />
         );
 
@@ -223,7 +206,10 @@ function AppContent() {
                 setOrderType('breakfast');
                 setCurrentScreen('build2');
               } else {
-                setWaakyeOrder(storedOrder);
+                // NOTE: BuildWaakyeScreen no longer accepts a prefilled order
+                // (it's self-contained now, fetching from vendor_menu_items),
+                // so "order again" just opens a fresh builder instead of
+                // restoring the previous selection. Known gap, not fixed yet.
                 setOrderType('waakye');
                 setCurrentScreen('build');
               }
