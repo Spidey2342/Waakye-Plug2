@@ -22,17 +22,39 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
   } = useCart();
 
   const [locating, setLocating] = useState(false);
-
-  const detectLocation = () => {
+const detectLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation not supported on this device');
       return;
     }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setCustomerLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
-        setLocating(false);
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            {
+              headers: {
+                'User-Agent': 'WaakyePlug/1.0',
+              },
+            }
+          );
+
+          if (!res.ok) throw new Error('Reverse geocode failed');
+
+          const data = await res.json();
+          const address = data?.display_name;
+          const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+
+          setCustomerLocation(address ? `${address}\n🗺️ ${mapsLink}` : `${latitude}, ${longitude}\n🗺️ ${mapsLink}`);
+        } catch {
+          const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+          setCustomerLocation(`${latitude}, ${longitude}\n🗺️ ${mapsLink}`);
+        } finally {
+          setLocating(false);
+        }
       },
       () => {
         alert('Unable to fetch location. Please enter manually.');
@@ -40,6 +62,23 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
       }
     );
   };
+  // const detectLocation = () => {
+  //   if (!navigator.geolocation) {
+  //     alert('Geolocation not supported on this device');
+  //     return;
+  //   }
+  //   setLocating(true);
+  //   navigator.geolocation.getCurrentPosition(
+  //     (position) => {
+  //       setCustomerLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
+  //       setLocating(false);
+  //     },
+  //     () => {
+  //       alert('Unable to fetch location. Please enter manually.');
+  //       setLocating(false);
+  //     }
+  //   );
+  // };
 
   const formatTo233 = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '').trim();
