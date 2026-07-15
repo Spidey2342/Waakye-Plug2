@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, Plus, Minus, Check, Loader2 } from 'lucide-react';
+import { ChevronLeft, Plus, Minus, Check, Loader2, Flame } from 'lucide-react';
 import { useVendor } from '@/app/context/VendorContext';
 import { getVendorMenu, groupMenuByCategory } from '@/app/lib/vendorMenu';
 import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
@@ -16,9 +16,7 @@ interface BuildWaakyeScreenProps {
 export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProps) {
   const { selectedVendor } = useVendor();
   const [loading, setLoading] = useState(true);
-  const [menu, setMenu] = useState(() =>
-    groupMenuByCategory([])
-  );
+  const [menu, setMenu] = useState(() => groupMenuByCategory([]));
 
   const [selectedBaseId, setSelectedBaseId] = useState<string | null>(null);
   const [proteinQty, setProteinQty] = useState<Record<string, number>>({});
@@ -113,16 +111,33 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
   const menuIsEmpty = menu.base.length === 0 && menu.protein.length === 0 && menu.extra.length === 0 && menu.combo.length === 0;
   const hasBuilder = menu.base.length > 0 || menu.protein.length > 0 || menu.extra.length > 0;
 
+  // Use the first combo/base image as the "hero" shot, like the pizza banner in the reference
+  const heroImage = menu.combo[0]?.image_url ?? menu.base[0]?.image_url ?? null;
+
   return (
     <div className="min-h-[100dvh] bg-[#fefaf4] flex flex-col [webkit-tap-highlight-color:transparent]">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-lg">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="font-bold text-lg">{selectedVendor?.business_name ?? 'Build Your Order'}</h1>
-          <div className="w-10" />
+
+      {/* ── Hero header, standing in for the reference's big pizza banner ── */}
+      <div className="relative h-56 shrink-0 bg-gray-200 overflow-hidden">
+        {heroImage ? (
+          <img src={heroImage} alt={selectedVendor?.business_name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-[#7a1d1d]/10 flex items-center justify-center">
+            <Flame className="w-10 h-10 text-[#7a1d1d]/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/40" />
+
+        <button
+          onClick={onBack}
+          className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 flex items-center justify-center backdrop-blur-sm"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        <div className="absolute bottom-4 left-4 right-4">
+          <p className="text-white/80 text-xs font-bold uppercase tracking-wide mb-1">Now Building</p>
+          <h1 className="text-white font-bold text-2xl leading-tight">{selectedVendor?.business_name ?? 'Your Order'}</h1>
         </div>
       </div>
 
@@ -137,33 +152,33 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
             </div>
           )}
 
-          {/* Ready-made combo items — fixed price, one tap, no builder needed */}
+          {/* ── Ready-made combos: image-top card, badge overlay, price/action row ── */}
           {menu.combo.length > 0 && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
               <h2 className="font-bold text-xl mb-4">Ready to Order</h2>
               <div className="grid grid-cols-2 gap-3">
                 {menu.combo.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border-2 border-gray-200 bg-white overflow-hidden flex flex-col"
-                  >
-                    <div className="h-28 bg-gray-50">
+                  <div key={item.id} className="rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col">
+                    <div className="relative h-28 bg-gray-50">
                       <MenuItemThumbnail imageUrl={item.image_url} category="combo" size="full" />
+                      <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/90 text-[#7a1d1d] shadow-sm">
+                        15 Mins
+                      </span>
                     </div>
-                    <div className="p-3 flex flex-col gap-1.5 flex-1">
+                    <div className="p-3 flex flex-col gap-1 flex-1">
                       <div className="font-bold text-sm leading-tight">{item.name}</div>
                       {item.description && (
                         <div className="text-xs text-gray-500 line-clamp-2">{item.description}</div>
                       )}
-                      <div className="flex items-center justify-between mt-auto pt-1">
+                      <div className="flex items-center justify-between mt-auto pt-2">
                         <span className="text-[#7a1d1d] font-bold text-sm">
                           {item.pricing_type === 'variable' ? 'From ' : ''}GH₵{item.price}
                         </span>
                         <button
                           onClick={() => handleAddCombo(item.id)}
-                          className="bg-[#7a1d1d] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#6a1717] transition-colors"
+                          className="w-8 h-8 rounded-full bg-[#7a1d1d] text-white flex items-center justify-center hover:bg-[#6a1717] transition-colors"
                         >
-                          Add
+                          <Plus className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -173,7 +188,6 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
             </motion.section>
           )}
 
-          {/* Divider between ready-made items and the build-your-own flow */}
           {menu.combo.length > 0 && hasBuilder && (
             <div className="flex items-center gap-3">
               <div className="h-px flex-1 bg-gray-200" />
@@ -192,22 +206,24 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
                     <button
                       key={item.id}
                       onClick={() => setSelectedBaseId(item.id)}
-                      className={`relative rounded-2xl border-2 overflow-hidden text-left transition-all ${
-                        isSelected ? 'border-[#7a1d1d]' : 'border-gray-200 hover:border-gray-300'
+                      className={`relative rounded-2xl bg-white shadow-sm overflow-hidden text-left transition-all ${
+                        isSelected ? 'ring-2 ring-[#7a1d1d]' : ''
                       }`}
                     >
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 z-10 w-5 h-5 bg-[#7a1d1d] rounded-full flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                      <div className={`h-24 bg-gray-50 transition-transform ${isSelected ? 'scale-105' : ''}`}>
+                      <div className="relative h-24 bg-gray-50">
                         <MenuItemThumbnail imageUrl={item.image_url} category="base" size="full" />
+                        <div
+                          className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center transition-colors ${
+                            isSelected ? 'bg-[#7a1d1d]' : 'bg-white/90'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 text-white" />}
+                        </div>
                       </div>
-                      <div className={`p-3 ${isSelected ? 'bg-[#7a1d1d]/5' : 'bg-white'}`}>
+                      <div className="p-3">
                         <div className="font-bold text-sm">{item.name}</div>
-                        <div className="text-[#7a1d1d] font-bold mt-0.5">GH₵{item.price}</div>
                         {item.description && <div className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</div>}
+                        <div className="text-[#7a1d1d] font-bold mt-1 text-sm">GH₵{item.price}</div>
                       </div>
                     </button>
                   );
@@ -216,42 +232,50 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
             </motion.section>
           )}
 
+          {/* ── Proteins: card row echoing the grid card's image + price/action layout ── */}
           {menu.protein.length > 0 && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <h2 className="font-bold text-xl mb-4">Add Proteins</h2>
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 {menu.protein.map((item) => {
                   const qty = proteinQty[item.id] || 0;
                   const isActive = qty > 0;
                   return (
                     <div
                       key={item.id}
-                      className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${
-                        isActive ? 'border-[#7a1d1d] bg-[#7a1d1d]/5' : 'bg-white border-gray-200'
+                      className={`rounded-2xl bg-white shadow-sm overflow-hidden flex flex-col transition-all ${
+                        isActive ? 'ring-2 ring-[#7a1d1d]' : ''
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <MenuItemThumbnail imageUrl={item.image_url} category="protein" size="sm" />
-                        <div>
-                          <div className="font-bold">{item.name}</div>
-                          <div className="text-sm text-gray-600">GH₵{item.price} each</div>
-                        </div>
+                      <div className="relative h-20 bg-gray-50">
+                        <MenuItemThumbnail imageUrl={item.image_url} category="protein" size="full" />
+                        {isActive && (
+                          <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7a1d1d] text-white">
+                            ×{qty}
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => updateProteinQty(item.id, -1)}
-                          disabled={qty === 0}
-                          className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <div className="w-8 text-center font-bold">{qty}</div>
-                        <button
-                          onClick={() => updateProteinQty(item.id, 1)}
-                          className="w-10 h-10 rounded-full bg-[#7a1d1d] text-white flex items-center justify-center hover:bg-[#6a1717]"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                      <div className="p-3 flex flex-col gap-1">
+                        <div className="font-bold text-sm leading-tight">{item.name}</div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[#7a1d1d] font-bold text-sm">GH₵{item.price}</span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => updateProteinQty(item.id, -1)}
+                              disabled={qty === 0}
+                              className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-4 text-center font-bold text-sm">{qty}</span>
+                            <button
+                              onClick={() => updateProteinQty(item.id, 1)}
+                              className="w-7 h-7 rounded-full bg-[#7a1d1d] text-white flex items-center justify-center hover:bg-[#6a1717]"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -260,6 +284,7 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
             </motion.section>
           )}
 
+          {/* ── Extras: kept compact/checkbox since these are true add-ons, not focal items ── */}
           {menu.extra.length > 0 && (
             <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <h2 className="font-bold text-xl mb-4">Extras</h2>
@@ -269,23 +294,23 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
                   return (
                     <label
                       key={item.id}
-                      className={`flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        isChecked ? 'border-[#4ade80] bg-green-50' : 'bg-white border-gray-200 hover:border-gray-300'
+                      className={`flex items-center justify-between p-3 rounded-2xl bg-white shadow-sm cursor-pointer transition-all ${
+                        isChecked ? 'ring-2 ring-[#4ade80]' : ''
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleExtra(item.id)}
-                          className="w-5 h-5 accent-[#7a1d1d]"
-                        />
                         <MenuItemThumbnail imageUrl={item.image_url} category="extra" size="sm" />
                         <div>
-                          <div className="font-bold">{item.name}</div>
-                          <div className="text-sm text-gray-600">+GH₵{item.price}</div>
+                          <div className="font-bold text-sm">{item.name}</div>
+                          <div className="text-xs text-gray-500">+GH₵{item.price}</div>
                         </div>
                       </div>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleExtra(item.id)}
+                        className="w-5 h-5 accent-[#7a1d1d]"
+                      />
                     </label>
                   );
                 })}
@@ -295,7 +320,6 @@ export function BuildWaakyeScreen({ onBack, onAddToCart }: BuildWaakyeScreenProp
         </div>
       </div>
 
-      {/* Sticky Footer — only for the build-your-own flow */}
       {hasBuilder && (
         <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+16px)] shadow-lg">
           <div className="max-w-2xl mx-auto">
