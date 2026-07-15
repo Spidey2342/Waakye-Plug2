@@ -1,460 +1,60 @@
-import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, Copy, Check, RotateCw, Gift, AlertCircle } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
-import { useUser } from '@/app/context/UserContext';
-import { useCart, CartLine, lineUnitPrice } from '@/app/context/CartContext';
-import { pickReward, recordSpin } from '@/app/lib/game-service';
-import { SPIN_REWARDS, type SpinReward } from '@/app/lib/supabase';
-import { toast } from 'sonner';
+import { motion } from 'motion/react';
+import { Check, Gift } from 'lucide-react';
+import { useVendor } from '@/app/context/VendorContext';
 
 interface ConfirmationScreenProps {
   onDone: () => void;
-  onSaveOrder: (order: any) => void;
   pointsEarned: number;
-  spinsRemaining: number;
 }
 
-function formatCartMessage({
-  lines,
-  deliveryMode,
-  customerPhone,
-  customerLocation,
-  totalPrice,
-}: {
-  lines: CartLine[];
-  deliveryMode: 'pickup' | 'delivery';
-  customerPhone: string;
-  customerLocation: string;
-  totalPrice: number;
-}): string {
-  let message = `🍚 *WAAKYE PLUG ORDER*\n\n`;
-
-  lines.forEach((line) => {
-    const base = line.items.find((i) => i.category === 'base' || i.category === 'combo');
-    const others = line.items.filter((i) => i.category !== 'base' && i.category !== 'combo');
-
-    message += `📦 ${line.quantity}x ${base?.name ?? 'Item'}`;
-    if (others.length > 0) {
-      message += ` + ${others.map((i) => (i.quantity > 1 ? `${i.quantity}x ${i.name}` : i.name)).join(' + ')}`;
-    }
-    message += `\n`;
-    message += `   GH₵${lineUnitPrice(line) * line.quantity}\n\n`;
-  });
-
-  message += `🚚 ${deliveryMode === 'delivery' ? 'Delivery' : 'Pickup'}`;
-
-  if (customerPhone) {
-    message += `\n📞 Phone: ${customerPhone}`;
-  }
-
-  if (deliveryMode === 'delivery' && customerLocation) {
-    message += `\n📍 Location: ${customerLocation}`;
-  }
-
-  message += `\n\n💰 *Total: GH₵${totalPrice}*`;
-  message += `\n\n⚡ Sent from Waakye Plug`;
-
-  return message;
-}
-
-const SEGMENT_COUNT = SPIN_REWARDS.length;
-const FULL_CIRCLE = 2 * Math.PI;
-const SEGMENT_ANGLE = FULL_CIRCLE / SEGMENT_COUNT;
-const RADIUS = 100;
-const CENTER = 115;
-
-function SpinWheelPopup({
-  phone,
-  spinsRemaining,
-  onRewardPicked,
-  onSkip,
-}: {
-  phone: string;
-  spinsRemaining: number;
-  onRewardPicked: (reward: SpinReward) => void;
-  onSkip: () => void;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [spinning, setSpinning] = useState(false);
-  const [reward, setReward] = useState<SpinReward | null>(null);
-  const [spinsLeft, setSpinsLeft] = useState(spinsRemaining);
-  const [rotation, setRotation] = useState(0);
-  const animRef = useRef<number>();
-
-  useEffect(() => { drawWheel(0); }, []);
-
-  function drawWheel(angle: number) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    SPIN_REWARDS.forEach((seg, i) => {
-      const start = angle + i * SEGMENT_ANGLE - Math.PI / 2;
-      const end = start + SEGMENT_ANGLE;
-      ctx.beginPath();
-      ctx.moveTo(CENTER, CENTER);
-      ctx.arc(CENTER, CENTER, RADIUS, start, end);
-      ctx.closePath();
-      ctx.fillStyle = seg.color;
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.save();
-      ctx.translate(CENTER, CENTER);
-      ctx.rotate(start + SEGMENT_ANGLE / 2);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px sans-serif';
-      ctx.fillText(seg.label, RADIUS - 6, 4);
-      ctx.restore();
-    });
-    ctx.beginPath();
-    ctx.arc(CENTER, CENTER, 16, 0, FULL_CIRCLE);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(CENTER, CENTER, 6, 0, FULL_CIRCLE);
-    ctx.fillStyle = '#7a1d1d';
-    ctx.fill();
-  }
-
-  async function spin() {
-    if (spinning || spinsLeft <= 0) return;
-    setSpinning(true);
-    setReward(null);
-    const picked = pickReward();
-    const pickedIndex = SPIN_REWARDS.indexOf(picked);
-    const targetAngle = -pickedIndex * SEGMENT_ANGLE;
-    const extraSpins = (5 + Math.floor(Math.random() * 4)) * FULL_CIRCLE;
-    const targetRotation = extraSpins + targetAngle;
-    const duration = 4000;
-    const start = performance.now();
-    const startRotation = rotation % FULL_CIRCLE;
-
-    function animate(now: number) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const currentAngle = startRotation + targetRotation * eased;
-      setRotation(currentAngle);
-      drawWheel(currentAngle);
-      if (progress < 1) {
-        animRef.current = requestAnimationFrame(animate);
-      } else {
-        setSpinning(false);
-        setReward(picked);
-        setSpinsLeft(s => s - 1);
-        recordSpin(phone, picked)
-          .then(() => toast.success(`+${picked.points} pts added!`))
-          .catch(() => {});
-      }
-    }
-    animRef.current = requestAnimationFrame(animate);
-  }
+export function ConfirmationScreen({ onDone, pointsEarned }: ConfirmationScreenProps) {
+  const { selectedVendor } = useVendor();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4 pb-4 sm:pb-0"
-    >
-      <motion.div
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 60, opacity: 0 }}
-        className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
-      >
-        <h2 className="text-xl font-bold text-center text-gray-900 mb-1">
-          🎡 Spin Before You Send!
-        </h2>
-        <p className="text-sm text-center text-gray-500 mb-4">
-          Win a reward that gets added to your order
-          {spinsLeft > 0 && <span className="block font-medium text-amber-600">{spinsLeft} spin{spinsLeft !== 1 ? 's' : ''} available</span>}
-        </p>
-
-        <div className="flex justify-center mb-4 relative">
-          <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-10"
-            style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderTop: '18px solid #7a1d1d' }} />
-          <canvas ref={canvasRef} width={230} height={230} className="rounded-full drop-shadow-md" />
-        </div>
-
-        {reward && (
+    <div className="min-h-[100dvh] bg-[#fefaf4] flex items-center justify-center px-4 py-6 [webkit-tap-highlight-color:transparent]">
+      <div className="max-w-md w-full pb-[env(safe-area-inset-bottom)]">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 will-change-transform text-center"
+        >
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: 'spring' }}
+            className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5"
           >
-            <Gift size={18} className="text-amber-500 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-amber-800">🎉 You won: {reward.label}!</p>
-              <p className="text-xs text-amber-600">Will be added to your WhatsApp message</p>
-            </div>
+            <Check className="w-8 h-8 text-green-600" />
           </motion.div>
-        )}
 
-        <div className="space-y-2 mt-2">
-          {spinsLeft > 0 && (
-            <button
-              onClick={spin}
-              disabled={spinning}
-              className="w-full flex items-center justify-center gap-2 bg-[#7a1d1d] text-white py-3 rounded-2xl font-bold hover:bg-[#6a1717] active:scale-95 transition-all disabled:opacity-50"
+          <h1 className="text-2xl font-bold mb-1.5">Order Sent! 🎉</h1>
+          <p className="text-gray-500 text-sm mb-5">
+            {selectedVendor?.business_name ?? 'The vendor'} has received your order and will confirm it shortly.
+          </p>
+
+          {pointsEarned > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 mb-5 text-sm text-amber-700"
             >
-              <RotateCw size={16} className={spinning ? 'animate-spin' : ''} />
-              {spinning ? 'Spinning...' : reward ? `Spin again (${spinsLeft} left)` : `Spin! (${spinsLeft} left)`}
-            </button>
+              ⭐ You earned <strong>+{pointsEarned} points</strong> for this order!
+            </motion.div>
           )}
 
           <button
-            onClick={() => reward ? onRewardPicked(reward) : onSkip()}
-            disabled={spinning}
-            className="w-full py-3 rounded-2xl font-medium text-sm border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
+            onClick={onDone}
+            className="w-full bg-[#7a1d1d] text-white py-4 rounded-2xl font-bold hover:bg-[#6a1717] transition-colors"
           >
-            {reward ? '✅ Use this reward & continue →' : 'Skip, continue without reward'}
+            Done
           </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
+        </motion.div>
 
-function SendConfirmDialog({
-  message,
-  onConfirm,
-  onCancel,
-}: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 px-4 pb-4 sm:pb-0"
-    >
-      <motion.div
-        initial={{ y: 60, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 60, opacity: 0 }}
-        className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <AlertCircle size={20} className="text-green-600" />
-          <h2 className="text-lg font-bold text-gray-900">Send this order?</h2>
-        </div>
-
-        <p className="text-sm text-gray-500 mb-4">
-          This will open WhatsApp with your order message ready to send.
-        </p>
-
-        <div className="bg-gray-50 rounded-xl p-3 mb-5 border border-gray-100 max-h-36 overflow-y-auto">
-          <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans">
-            {message}
-          </pre>
-        </div>
-
-        <div className="space-y-2">
-          <button
-            onClick={onConfirm}
-            className="w-full bg-green-500 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"
-          >
-            <MessageCircle size={18} />
-            Yes, send via WhatsApp
-          </button>
-          <button
-            onClick={onCancel}
-            className="w-full py-3 rounded-2xl text-sm text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            Go back and edit
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
-  const { phone } = useUser();
-  const { lines, deliveryMode, customerPhone, customerLocation, totalPrice } = useCart();
-
-  const [step, setStep] = useState<'spin' | 'review' | 'sending'>('spin');
-  const [wonReward, setWonReward] = useState<SpinReward | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showSendConfirm, setShowSendConfirm] = useState(false);
-
-  const baseMessage = formatCartMessage({ lines, deliveryMode, customerPhone, customerLocation, totalPrice });
-
-  const message = wonReward
-    ? baseMessage.replace(
-        '⚡ Sent from Waakye Plug',
-        `🎁 *Reward: ${wonReward.label}*\n\n⚡ Sent from Waakye Plug`
-      )
-    : baseMessage;
-
-  function handleRewardPicked(reward: SpinReward) {
-    setWonReward(reward);
-    setStep('review');
-  }
-
-  function handleSkipSpin() {
-    setStep('review');
-  }
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(message);
-    } catch {
-      const ta = document.createElement('textarea');
-      ta.value = message;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  function handleWhatsApp() {
-    const phoneNumber = '233599995651';
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
-    setShowSendConfirm(false);
-    setStep('sending');
-    setTimeout(() => {
-      lines.forEach((line) => {
-        onSaveOrder({ id: line.id, items: line.items, quantity: line.quantity });
-      });
-      onDone();
-    }, 800);
-  }
-
-  return (
-    <>
-      <AnimatePresence>
-        {step === 'spin' && (
-          <SpinWheelPopup
-            phone={phone}
-            spinsRemaining={spinsRemaining}
-            onRewardPicked={handleRewardPicked}
-            onSkip={handleSkipSpin}
-          />
-        )}
-
-        {showSendConfirm && (
-          <SendConfirmDialog
-            message={message}
-            onConfirm={handleWhatsApp}
-            onCancel={() => setShowSendConfirm(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      <div className="min-h-[100dvh] bg-[#fefaf4] flex items-center justify-center px-4 py-6 [webkit-tap-highlight-color:transparent]">
-        <div className="max-w-md w-full pb-[env(safe-area-inset-bottom)]">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 will-change-transform"
-          >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5"
-            >
-              <Check className="w-8 h-8 text-green-600" />
-            </motion.div>
-
-            <h1 className="text-2xl font-bold text-center mb-1.5">Almost There! 🎉</h1>
-            <p className="text-gray-500 text-center text-sm mb-5">
-              Review your order then send via WhatsApp
-            </p>
-
-            {/* ── Points + reward merged into a single status strip ── */}
-            {(pointsEarned > 0 || wonReward) && (
-              <motion.div
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-2 mb-5"
-              >
-                {pointsEarned > 0 && (
-                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-sm text-amber-700">
-                    ⭐ You earned <strong>+{pointsEarned} points</strong> for this order!
-                  </div>
-                )}
-
-                {wonReward && (
-                  <div className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5">
-                    <Gift size={18} className="text-green-600 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-green-800">Reward: {wonReward.label} 🎁</p>
-                      <p className="text-xs text-green-600">Added to your message below</p>
-                    </div>
-                    <button
-                      onClick={() => setStep('spin')}
-                      className="text-xs text-green-600 underline flex-shrink-0"
-                    >
-                      Change
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {!wonReward && step === 'review' && (
-              <button
-                onClick={() => setStep('spin')}
-                className="w-full mb-5 border border-dashed border-amber-300 bg-amber-50 text-amber-700 py-2.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors"
-              >
-                <RotateCw size={14} />
-                Go back and spin for a reward
-              </button>
-            )}
-
-            <div className="bg-gray-50 rounded-xl p-4 mb-5 border border-gray-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-bold text-gray-700">Your Message</span>
-                <button
-                  onClick={handleCopy}
-                  className="flex items-center gap-1 text-sm text-[#7a1d1d] hover:text-[#6a1717]"
-                >
-                  {copied ? <><Check className="w-4 h-4" />Copied!</> : <><Copy className="w-4 h-4" />Copy</>}
-                </button>
-              </div>
-              <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans max-h-40 overflow-y-auto [-webkit-overflow-scrolling:touch]">
-                {message}
-              </pre>
-            </div>
-
-            {step !== 'spin' ? (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowSendConfirm(true)}
-                disabled={step === 'sending'}
-                className="w-full bg-green-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-green-600 transition-colors shadow-md disabled:opacity-60"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span>Confirm via WhatsApp</span>
-              </motion.button>
-            ) : (
-              <div className="w-full bg-gray-100 text-gray-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed">
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-sm">Spin first, or skip above, to unlock sending</span>
-              </div>
-            )}
-          </motion.div>
-
-          <div className="text-center mt-5 text-sm text-gray-500 pb-[env(safe-area-inset-bottom)]">
-            <p className="font-bold text-[#7a1d1d]">Waakye Plug</p>
-            <p>Thanks for ordering! 🙏</p>
-          </div>
+        <div className="text-center mt-5 text-sm text-gray-500 pb-[env(safe-area-inset-bottom)]">
+          <p className="font-bold text-[#7a1d1d]">Waakye Plug</p>
+          <p>Thanks for ordering! 🙏</p>
         </div>
       </div>
-    </>
+    </div>
   );
 }

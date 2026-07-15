@@ -116,17 +116,15 @@ function AppContent() {
   }
 
   // ── Order confirmed: save + record points across the whole cart ────────────
-  async function handleOrderConfirmed() {
-    try {
-      const result = await recordOrder(phone, username, itemsSubtotal);
-      setPointsEarned(result.pointsEarned);
-      setSpinsRemaining(result.player.spins_remaining ?? 3);
-    } catch (e) {
-      console.error('Could not record order', e);
-      setSpinsRemaining(3);
-    }
-    setCurrentScreen('confirm');
+ async function handleOrderConfirmed() {
+  try {
+    const result = await recordOrder(phone, username, itemsSubtotal);
+    setPointsEarned(result.pointsEarned);
+  } catch (e) {
+    console.error('Could not record points for this order', e);
   }
+  setCurrentScreen('confirm');
+}
 
   function handleOrderDone() {
     clearCart();
@@ -190,12 +188,10 @@ function AppContent() {
 
       case 'confirm':
         return (
-          <ConfirmationScreen
-            onSaveOrder={saveOrder}
-            onDone={handleOrderDone}
-            pointsEarned={pointsEarned}
-            spinsRemaining={spinsRemaining}
-          />
+         <ConfirmationScreen
+      onDone={handleOrderDone}
+      pointsEarned={pointsEarned}
+    />
         );
 
       case 'history':

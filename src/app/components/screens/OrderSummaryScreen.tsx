@@ -2,10 +2,15 @@
 
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { ChevronLeft, Minus, Plus, Trash2, Package, Truck } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Trash2, Package, Truck, Banknote, Smartphone, Loader2 } from 'lucide-react';
 import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
 import { useCart, CartLine, lineUnitPrice } from '@/app/context/CartContext';
+import { useUser } from '@/app/context/UserContext';
+import { useVendor } from '@/app/context/VendorContext';
 import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
+import { submitOrder, type PaymentMethod } from '@/app/lib/orders';
+import { saveOrder } from '@/app/utils/orderHistory';
+import { toast } from 'sonner';
 
 interface OrderSummaryScreenProps {
   onBack: () => void;
@@ -20,9 +25,14 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
     customerLocation, setCustomerLocation,
     itemsSubtotal, totalPrice,
   } = useCart();
+  const { userId } = useUser();
+  const { selectedVendor } = useVendor();
 
   const [locating, setLocating] = useState(false);
-const detectLocation = () => {
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [submitting, setSubmitting] = useState(false);
+
+  const detectLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation not supported on this device');
       return;
@@ -31,23 +41,15 @@ const detectLocation = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
-            {
-              headers: {
-                'User-Agent': 'WaakyePlug/1.0',
-              },
-            }
+            { headers: { 'User-Agent': 'WaakyePlug/1.0' } }
           );
-
           if (!res.ok) throw new Error('Reverse geocode failed');
-
           const data = await res.json();
           const address = data?.display_name;
           const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-
           setCustomerLocation(address ? `${address}\n🗺️ ${mapsLink}` : `${latitude}, ${longitude}\n🗺️ ${mapsLink}`);
         } catch {
           const mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
@@ -62,23 +64,6 @@ const detectLocation = () => {
       }
     );
   };
-  // const detectLocation = () => {
-  //   if (!navigator.geolocation) {
-  //     alert('Geolocation not supported on this device');
-  //     return;
-  //   }
-  //   setLocating(true);
-  //   navigator.geolocation.getCurrentPosition(
-  //     (position) => {
-  //       setCustomerLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
-  //       setLocating(false);
-  //     },
-  //     () => {
-  //       alert('Unable to fetch location. Please enter manually.');
-  //       setLocating(false);
-  //     }
-  //   );
-  // };
 
   const formatTo233 = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '').trim();
@@ -91,6 +76,43 @@ const detectLocation = () => {
   const otherItems = (line: CartLine) => line.items.filter((i) => i.category !== 'base' && i.category !== 'combo');
 
   const isEmpty = lines.length === 0;
+
+  const canSubmit =
+    !submitting &&
+    !!selectedVendor &&
+    !!userId &&
+    (deliveryMode !== 'delivery' || (!!customerPhone && !!customerLocation));
+
+  async function handleConfirm() {
+    if (!selectedVendor || !userId) {
+      toast.error('Something went wrong — please restart the app.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await submitOrder({
+        customerId: userId,
+        vendorId: selectedVendor.id,
+        lines,
+        totalAmount: totalPrice,
+        deliveryAddress: customerLocation || 'Not provided',
+        paymentMethod,
+      });
+
+      // Keep a local "order again" history on the customer's device,
+      // separate from the vendor-facing row we just inserted.
+      lines.forEach((line) => {
+        saveOrder({ id: line.id, items: line.items, quantity: line.quantity, createdAt: new Date().toISOString() } as any);
+      });
+
+      onConfirm();
+    } catch (err) {
+      console.error('Could not submit order', err);
+      toast.error('Could not send your order. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <div className="min-h-[100dvh] bg-[#fefaf4] flex flex-col [webkit-tap-highlight-color:transparent]">
@@ -116,7 +138,6 @@ const detectLocation = () => {
           <div className="flex-1 overflow-y-auto pb-40 [-webkit-overflow-scrolling:touch]">
             <div className="max-w-2xl mx-auto p-4 space-y-3">
 
-              {/* ── Cart lines ── */}
               <div className="space-y-2.5">
                 {lines.map((line, i) => (
                   <motion.div
@@ -182,7 +203,6 @@ const detectLocation = () => {
                 + Add another item
               </button>
 
-              {/* ── Delivery mode ── */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -210,7 +230,39 @@ const detectLocation = () => {
                 </div>
               </motion.div>
 
-              {/* ── Contact + delivery details merged into one card ── */}
+              {/* ── Payment method — new, required by the orders table ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22 }}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
+              >
+                <div className="font-bold text-sm mb-3">Payment Method</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPaymentMethod('cash')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      paymentMethod === 'cash' ? 'border-[#7a1d1d] bg-[#7a1d1d]/5' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Banknote className={`w-6 h-6 mx-auto mb-2 ${paymentMethod === 'cash' ? 'text-[#7a1d1d]' : 'text-gray-400'}`} />
+                    <div className="font-bold text-sm">Cash</div>
+                    <div className="text-xs text-gray-500 mt-1">Pay on delivery</div>
+                  </button>
+
+                  <button
+                    onClick={() => setPaymentMethod('momo')}
+                    className={`p-4 rounded-xl border transition-all ${
+                      paymentMethod === 'momo' ? 'border-[#7a1d1d] bg-[#7a1d1d]/5' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <Smartphone className={`w-6 h-6 mx-auto mb-2 ${paymentMethod === 'momo' ? 'text-[#7a1d1d]' : 'text-gray-400'}`} />
+                    <div className="font-bold text-sm">MoMo</div>
+                    <div className="text-xs text-gray-500 mt-1">Mobile money</div>
+                  </button>
+                </div>
+              </motion.div>
+
               {deliveryMode === 'delivery' && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
@@ -255,7 +307,7 @@ const detectLocation = () => {
                 transition={{ delay: 0.3 }}
                 className="text-xs text-gray-400 text-center px-2"
               >
-                📝 Your order will be confirmed via WhatsApp — we'll send pickup/delivery details there.
+                📝 Your order goes straight to {selectedVendor?.business_name ?? 'the vendor'} — they'll confirm from their end.
               </motion.p>
             </div>
           </div>
@@ -283,15 +335,16 @@ const detectLocation = () => {
                 </div>
               </div>
               <button
-                onClick={onConfirm}
-                disabled={deliveryMode === 'delivery' && (!customerPhone || !customerLocation)}
-                className={`w-full py-4 rounded-2xl font-bold text-lg transition-colors ${
-                  deliveryMode === 'delivery' && (!customerPhone || !customerLocation)
+                onClick={handleConfirm}
+                disabled={!canSubmit}
+                className={`w-full py-4 rounded-2xl font-bold text-lg transition-colors flex items-center justify-center gap-2 ${
+                  !canSubmit
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-[#7a1d1d] text-white hover:bg-[#6a1717]'
                 }`}
               >
-                Confirm Order
+                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                {submitting ? 'Sending Order...' : 'Confirm Order'}
               </button>
             </div>
           </div>
