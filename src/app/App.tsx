@@ -47,6 +47,7 @@ function AppContent() {
   const [orderType, setOrderType] = useState<OrderType>('waakye');
   const [canSpin, setCanSpin] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(0);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
     drink: 'tea',
     extras: [],
@@ -120,7 +121,7 @@ function AppContent() {
     if (!selectedVendor) return;
 
     try {
-      await createOrder({
+      const created = await createOrder({
         customerId: userId,
         vendorId: selectedVendor.id,
         lines,
@@ -128,6 +129,7 @@ function AppContent() {
         deliveryAddress: customerLocation,
         paymentMethod,
       });
+      setLastOrderId(created.id);
     } catch (e) {
       console.error('Could not create order', e);
       toast.error('Could not place your order — please try again.');
@@ -206,6 +208,7 @@ function AppContent() {
       case 'confirm':
         return (
           <ConfirmationScreen
+            orderId={lastOrderId}
             onSaveOrder={saveOrder}
             onDone={handleOrderDone}
             pointsEarned={pointsEarned}
