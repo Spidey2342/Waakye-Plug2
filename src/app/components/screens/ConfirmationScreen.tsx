@@ -10,11 +10,10 @@ import { toast } from 'sonner';
 interface ConfirmationScreenProps {
   onDone: () => void;
   onSaveOrder: (order: any) => void;
-  pointsEarned: number;        // ← from App.tsx
-  spinsRemaining: number;      // ← from App.tsx
+  pointsEarned: number;
+  spinsRemaining: number;
 }
 
-// ─── Build the full WhatsApp message from every line in the cart ──────────────
 function formatCartMessage({
   lines,
   deliveryMode,
@@ -39,7 +38,6 @@ function formatCartMessage({
       message += ` + ${others.map((i) => (i.quantity > 1 ? `${i.quantity}x ${i.name}` : i.name)).join(' + ')}`;
     }
     message += `\n`;
-
     message += `   GH₵${lineUnitPrice(line) * line.quantity}\n\n`;
   });
 
@@ -59,7 +57,6 @@ function formatCartMessage({
   return message;
 }
 
-// ─── Spin Wheel popup ─────────────────────────────────────────────────────────
 const SEGMENT_COUNT = SPIN_REWARDS.length;
 const FULL_CIRCLE = 2 * Math.PI;
 const SEGMENT_ANGLE = FULL_CIRCLE / SEGMENT_COUNT;
@@ -178,14 +175,12 @@ function SpinWheelPopup({
           {spinsLeft > 0 && <span className="block font-medium text-amber-600">{spinsLeft} spin{spinsLeft !== 1 ? 's' : ''} available</span>}
         </p>
 
-        {/* Wheel */}
         <div className="flex justify-center mb-4 relative">
           <div className="absolute left-1/2 -translate-x-1/2 -top-1 z-10"
             style={{ width: 0, height: 0, borderLeft: '9px solid transparent', borderRight: '9px solid transparent', borderTop: '18px solid #7a1d1d' }} />
           <canvas ref={canvasRef} width={230} height={230} className="rounded-full drop-shadow-md" />
         </div>
 
-        {/* Reward banner */}
         {reward && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -201,7 +196,6 @@ function SpinWheelPopup({
         )}
 
         <div className="space-y-2 mt-2">
-          {/* Spin button — shown when spins left and no reward yet OR want to respin */}
           {spinsLeft > 0 && (
             <button
               onClick={spin}
@@ -213,11 +207,10 @@ function SpinWheelPopup({
             </button>
           )}
 
-          {/* Proceed button */}
           <button
             onClick={() => reward ? onRewardPicked(reward) : onSkip()}
             disabled={spinning}
-            className="w-full py-3 rounded-2xl font-medium text-sm border-2 border-gray-200 text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
+            className="w-full py-3 rounded-2xl font-medium text-sm border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
           >
             {reward ? '✅ Use this reward & continue →' : 'Skip, continue without reward'}
           </button>
@@ -227,7 +220,6 @@ function SpinWheelPopup({
   );
 }
 
-// ─── Send confirmation dialog ─────────────────────────────────────────────────
 function SendConfirmDialog({
   message,
   onConfirm,
@@ -259,8 +251,7 @@ function SendConfirmDialog({
           This will open WhatsApp with your order message ready to send.
         </p>
 
-        {/* Message preview */}
-        <div className="bg-gray-50 rounded-xl p-3 mb-5 border border-gray-200 max-h-36 overflow-y-auto">
+        <div className="bg-gray-50 rounded-xl p-3 mb-5 border border-gray-100 max-h-36 overflow-y-auto">
           <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans">
             {message}
           </pre>
@@ -286,18 +277,15 @@ function SendConfirmDialog({
   );
 }
 
-// ─── Main ConfirmationScreen ──────────────────────────────────────────────────
 export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRemaining }: ConfirmationScreenProps) {
   const { phone } = useUser();
   const { lines, deliveryMode, customerPhone, customerLocation, totalPrice } = useCart();
 
-  // Flow state only — no duplicate state for props
   const [step, setStep] = useState<'spin' | 'review' | 'sending'>('spin');
   const [wonReward, setWonReward] = useState<SpinReward | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
 
-  // Build message from every cart line, not a single order
   const baseMessage = formatCartMessage({ lines, deliveryMode, customerPhone, customerLocation, totalPrice });
 
   const message = wonReward
@@ -306,8 +294,6 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
         `🎁 *Reward: ${wonReward.label}*\n\n⚡ Sent from Waakye Plug`
       )
     : baseMessage;
-
-  // No useEffect — recordOrder already called in App.tsx
 
   function handleRewardPicked(reward: SpinReward) {
     setWonReward(reward);
@@ -339,13 +325,6 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
     setShowSendConfirm(false);
     setStep('sending');
     setTimeout(() => {
-      // Save each cart line to order history separately.
-      // Assumes saveOrder/StoredOrder distinguishes waakye vs breakfast via
-      // a `type` field the same way OrderHistoryScreen's onOrderAgain checks
-      // it — flag this to me if saved history looks wrong.
-      // Saving each cart line's flattened items. This still hasn't been
-      // checked against orderHistory.ts's actual expected shape (still don't
-      // have that file) — flag it to me if saved history looks wrong.
       lines.forEach((line) => {
         onSaveOrder({ id: line.id, items: line.items, quantity: line.quantity });
       });
@@ -356,7 +335,6 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
   return (
     <>
       <AnimatePresence>
-        {/* Spin popup — only on spin step */}
         {step === 'spin' && (
           <SpinWheelPopup
             phone={phone}
@@ -366,7 +344,6 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
           />
         )}
 
-        {/* Send confirmation dialog */}
         {showSendConfirm && (
           <SendConfirmDialog
             message={message}
@@ -381,68 +358,64 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl shadow-xl p-8 will-change-transform"
+            className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 will-change-transform"
           >
-            {/* Success icon */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
+              className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5"
             >
-              <Check className="w-10 h-10 text-green-600" />
+              <Check className="w-8 h-8 text-green-600" />
             </motion.div>
 
-            <h1 className="text-2xl font-bold text-center mb-2">Almost There! 🎉</h1>
-            <p className="text-gray-600 text-center mb-4">
+            <h1 className="text-2xl font-bold text-center mb-1.5">Almost There! 🎉</h1>
+            <p className="text-gray-500 text-center text-sm mb-5">
               Review your order then send via WhatsApp
             </p>
 
-            {/* Points earned */}
-            {pointsEarned > 0 && (
+            {/* ── Points + reward merged into a single status strip ── */}
+            {(pointsEarned > 0 || wonReward) && (
               <motion.div
                 initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4 text-sm text-amber-700"
+                className="space-y-2 mb-5"
               >
-                ⭐ You earned <strong>+{pointsEarned} points</strong> for this order!
+                {pointsEarned > 0 && (
+                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-sm text-amber-700">
+                    ⭐ You earned <strong>+{pointsEarned} points</strong> for this order!
+                  </div>
+                )}
+
+                {wonReward && (
+                  <div className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5">
+                    <Gift size={18} className="text-green-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-green-800">Reward: {wonReward.label} 🎁</p>
+                      <p className="text-xs text-green-600">Added to your message below</p>
+                    </div>
+                    <button
+                      onClick={() => setStep('spin')}
+                      className="text-xs text-green-600 underline flex-shrink-0"
+                    >
+                      Change
+                    </button>
+                  </div>
+                )}
               </motion.div>
             )}
 
-            {/* Reward won badge */}
-            {wonReward && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 mb-4"
-              >
-                <Gift size={20} className="text-green-600 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-green-800">Reward: {wonReward.label} 🎁</p>
-                  <p className="text-xs text-green-600">Added to your message below</p>
-                </div>
-                <button
-                  onClick={() => setStep('spin')}
-                  className="text-xs text-green-600 underline flex-shrink-0"
-                >
-                  Change
-                </button>
-              </motion.div>
-            )}
-
-            {/* No reward — option to spin */}
             {!wonReward && step === 'review' && (
               <button
                 onClick={() => setStep('spin')}
-                className="w-full mb-4 border border-dashed border-amber-300 bg-amber-50 text-amber-700 py-2.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors"
+                className="w-full mb-5 border border-dashed border-amber-300 bg-amber-50 text-amber-700 py-2.5 rounded-2xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors"
               >
                 <RotateCw size={14} />
                 Go back and spin for a reward
               </button>
             )}
 
-            {/* Message preview */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
+            <div className="bg-gray-50 rounded-xl p-4 mb-5 border border-gray-100">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-bold text-gray-700">Your Message</span>
                 <button
@@ -457,39 +430,26 @@ export function ConfirmationScreen({ onDone, onSaveOrder, pointsEarned, spinsRem
               </pre>
             </div>
 
-            {/* WhatsApp button — locked during spin step */}
             {step !== 'spin' ? (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowSendConfirm(true)}
                 disabled={step === 'sending'}
-                className="w-full bg-green-500 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-green-600 transition-colors shadow-md disabled:opacity-60"
+                className="w-full bg-green-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-green-600 transition-colors shadow-md disabled:opacity-60"
               >
-                <MessageCircle className="w-6 h-6" />
-                <div>
-                  <div>Confirm via WhatsApp</div>
-                  <div className="text-xs font-normal">Preferred 👍</div>
-                </div>
+                <MessageCircle className="w-5 h-5" />
+                <span>Confirm via WhatsApp</span>
               </motion.button>
             ) : (
-              <div className="w-full bg-gray-100 text-gray-400 py-5 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed">
-                <MessageCircle className="w-6 h-6" />
-                <div>
-                  <div>Spin first to unlock sending</div>
-                  <div className="text-xs font-normal">or skip the spin above 👆</div>
-                </div>
+              <div className="w-full bg-gray-100 text-gray-400 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 cursor-not-allowed">
+                <MessageCircle className="w-5 h-5" />
+                <span className="text-sm">Spin first, or skip above, to unlock sending</span>
               </div>
             )}
-
-            <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
-              <p className="text-sm text-gray-700 text-center">
-                💬 We'll reply with pickup/delivery details within minutes!
-              </p>
-            </div>
           </motion.div>
 
-          <div className="text-center mt-6 text-sm text-gray-600 pb-[env(safe-area-inset-bottom)]">
+          <div className="text-center mt-5 text-sm text-gray-500 pb-[env(safe-area-inset-bottom)]">
             <p className="font-bold text-[#7a1d1d]">Waakye Plug</p>
             <p>Thanks for ordering! 🙏</p>
           </div>
