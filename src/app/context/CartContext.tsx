@@ -5,8 +5,8 @@ import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
 import type { MenuItem } from '@/app/lib/vendorMenu';
 
 // Flat shape matching exactly what orders.items needs in Supabase —
-// building the cart around this from the start means checkout (Phase 4)
-// doesn't need to convert anything.
+// building the cart around this from the start means checkout doesn't
+// need to convert anything.
 export type OrderLineItem = {
   id: string;      // vendor_menu_items id
   name: string;
@@ -24,6 +24,7 @@ export type CartLine = {
 };
 
 type DeliveryMode = 'pickup' | 'delivery';
+export type PaymentMethod = 'cash' | 'momo';
 
 interface CartContextType {
   lines: CartLine[];
@@ -38,6 +39,8 @@ interface CartContextType {
   setCustomerPhone: (phone: string) => void;
   customerLocation: string;
   setCustomerLocation: (loc: string) => void;
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (method: PaymentMethod) => void;
 
   itemsSubtotal: number;
   totalItems: number;
@@ -52,9 +55,13 @@ export function lineUnitPrice(line: CartLine): number {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('pickup');
+  // Defaults to 'delivery' — Pickup is a disabled "coming soon" button right
+  // now, so defaulting to 'pickup' meant someone could hit Confirm without
+  // ever being asked for phone/address.
+  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('delivery');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerLocation, setCustomerLocation] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
 
   const addToCart = (vendorId: string, items: OrderLineItem[]) => {
     const id = `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -73,9 +80,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setLines([]);
-    setDeliveryMode('pickup');
+    setDeliveryMode('delivery');
     setCustomerPhone('');
     setCustomerLocation('');
+    setPaymentMethod('cash');
   };
 
   const toggleDeliveryMode = () => setDeliveryMode((m) => (m === 'pickup' ? 'delivery' : 'pickup'));
@@ -92,6 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         deliveryMode, toggleDeliveryMode,
         customerPhone, setCustomerPhone,
         customerLocation, setCustomerLocation,
+        paymentMethod, setPaymentMethod,
         itemsSubtotal, totalItems, totalPrice,
       }}
     >

@@ -1,9 +1,28 @@
 import { supabase } from '@/app/lib/supabase';
 import type { CartLine } from '@/app/context/CartContext';
 
-export type PaymentMethod = 'cash' | 'momo';
+// Merges every line's items into one flat list, multiplying each item's
+// per-unit quantity by how many of that composed order were added — this
+// is the exact shape orders.items expects (see the real historical rows:
+// [{ id, name, price, category, quantity }]).
+export function flattenCartItems(lines: CartLine[]) {
+  const merged: Record<string, { id: string; name: string; price: number; category: string; quantity: number }> = {};
 
-export async function submitOrder({
+  lines.forEach((line) => {
+    line.items.forEach((item) => {
+      const qty = item.quantity * line.quantity;
+      if (merged[item.id]) {
+        merged[item.id].quantity += qty;
+      } else {
+        merged[item.id] = { id: item.id, name: item.name, price: item.price, category: item.category, quantity: qty };
+      }
+    });
+  });
+
+  return Object.values(merged);
+}
+
+export async function createOrder({
   customerId,
   vendorId,
   lines,
@@ -16,16 +35,9 @@ export async function submitOrder({
   lines: CartLine[];
   totalAmount: number;
   deliveryAddress: string;
-  paymentMethod: PaymentMethod;
+  paymentMethod: 'cash' | 'momo';
 }) {
-  // Flatten cart lines into the plain jsonb shape the vendor dashboard expects
-  // under `orders.items` — vendor's OrdersTab doesn't currently render this
-  // in detail, but keeping it structured means that's easy to add later.
-  const items = lines.map((line) => ({
-    id: line.id,
-    quantity: line.quantity,
-    items: line.items,
-  }));
+  const items = flattenCartItems(lines);
 
   const { data, error } = await supabase
     .from('orders')

@@ -19,6 +19,7 @@ import { VendorProvider, useVendor } from '@/app/context/VendorContext';
 import { FloatingCartButton } from '@/app/components/FloatingCartButton';
 import { saveOrder } from '@/app/utils/orderHistory';
 import { recordOrder } from '@/app/lib/game-service';
+import { createOrder } from '@/app/lib/orders';
 import { Toaster, toast } from 'sonner';
 
 type Screen = 'landing' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
@@ -37,8 +38,8 @@ export default function App() {
 }
 
 function AppContent() {
-  const { hasUser, phone, username, ready } = useUser();
-  const { addToCart, clearCart, itemsSubtotal } = useCart();
+  const { hasUser, userId, phone, username, ready } = useUser();
+  const { addToCart, clearCart, itemsSubtotal, lines, deliveryMode, customerLocation, paymentMethod, totalPrice } = useCart();
   const { selectedVendor, clearVendor } = useVendor();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
@@ -46,7 +47,6 @@ function AppContent() {
   const [orderType, setOrderType] = useState<OrderType>('waakye');
   const [canSpin, setCanSpin] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(0);
-  const [spinsRemaining, setSpinsRemaining] = useState(3);
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
     drink: 'tea',
     extras: [],
@@ -115,16 +115,33 @@ function AppContent() {
     setCurrentScreen('summary');
   }
 
-  // ── Order confirmed: save + record points across the whole cart ────────────
- async function handleOrderConfirmed() {
-  try {
-    const result = await recordOrder(phone, username, itemsSubtotal);
-    setPointsEarned(result.pointsEarned);
-  } catch (e) {
-    console.error('Could not record points for this order', e);
+  // ── Order confirmed: write the real order, THEN record points ──────────────
+  async function handleOrderConfirmed() {
+    if (!selectedVendor) return;
+
+    try {
+      await createOrder({
+        customerId: userId,
+        vendorId: selectedVendor.id,
+        lines,
+        totalAmount: totalPrice,
+        deliveryAddress: customerLocation,
+        paymentMethod,
+      });
+    } catch (e) {
+      console.error('Could not create order', e);
+      toast.error('Could not place your order — please try again.');
+      return; // stay on the summary screen, nothing was actually sent
+    }
+
+    try {
+      const result = await recordOrder(phone, username, itemsSubtotal);
+      setPointsEarned(result.pointsEarned);
+    } catch (e) {
+      console.error('Could not record order', e);
+    }
+    setCurrentScreen('confirm');
   }
-  setCurrentScreen('confirm');
-}
 
   function handleOrderDone() {
     clearCart();
@@ -188,10 +205,11 @@ function AppContent() {
 
       case 'confirm':
         return (
-         <ConfirmationScreen
-      onDone={handleOrderDone}
-      pointsEarned={pointsEarned}
-    />
+          <ConfirmationScreen
+            onSaveOrder={saveOrder}
+            onDone={handleOrderDone}
+            pointsEarned={pointsEarned}
+          />
         );
 
       case 'history':
