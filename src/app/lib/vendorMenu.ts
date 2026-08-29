@@ -21,6 +21,9 @@ export type Vendor = {
   latitude: number | null;
   longitude: number | null;
   logo_url: string | null;
+  // Whether this vendor offers a customizable bowl (Size/Protein/Extra) on
+  // top of their fixed Combo items. Set by the admin per vendor.
+  supports_build: boolean;
 };
 
 // Any approved vendor — this replaces the old hardcoded single VENDOR_ID.
@@ -29,7 +32,7 @@ export type Vendor = {
 export async function getApprovedVendors(): Promise<Vendor[]> {
   const { data, error } = await supabase
     .from('vendors')
-    .select('id, business_name, description, location, is_open, latitude, longitude, logo_url')
+    .select('id, business_name, description, location, is_open, latitude, longitude, logo_url, supports_build')
     .eq('status', 'approved')
     .order('business_name', { ascending: true });
 

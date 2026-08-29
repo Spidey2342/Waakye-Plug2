@@ -5,10 +5,6 @@ import { motion } from 'motion/react';
 import {
   MapPin,
   Search,
-  Soup,
-  Beef,
-  Salad,
-  CupSoda,
   UtensilsCrossed,
   Heart,
   Plus,
@@ -17,7 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useVendor } from '@/app/context/VendorContext';
-import { getVendorMenu, groupMenuByCategory, type MenuItem } from '@/app/lib/vendorMenu';
+import { getVendorMenu, type MenuItem } from '@/app/lib/vendorMenu';
 import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
 import { useCart } from '@/app/context/CartContext';
 import { toast } from 'sonner';
@@ -29,17 +25,6 @@ interface HomeScreenProps {
   onRewards: () => void;
 }
 
-type CategoryKey = 'all' | MenuItem['category'];
-
-const CATEGORY_TABS: { key: CategoryKey; label: string; icon: typeof Soup }[] = [
-  { key: 'all', label: 'All', icon: UtensilsCrossed },
-  { key: 'combo', label: 'Combos', icon: UtensilsCrossed },
-  { key: 'base', label: 'Bowls', icon: Soup },
-  { key: 'protein', label: 'Proteins', icon: Beef },
-  { key: 'extra', label: 'Extras', icon: Salad },
-  { key: 'drink', label: 'Drinks', icon: CupSoda },
-];
-
 export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }: HomeScreenProps) {
   const { selectedVendor } = useVendor();
   const { addToCart } = useCart();
@@ -47,7 +32,6 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
   const [loading, setLoading] = useState(true);
   const [allItems, setAllItems] = useState<MenuItem[]>([]);
   const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<CategoryKey>('all');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -70,24 +54,18 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
     return () => { cancelled = true; };
   }, [selectedVendor]);
 
-  // Only show category tabs for categories that actually have items, so the
-  // strip doesn't advertise a "Drinks" tab that opens onto nothing.
-  const availableCategories = useMemo(() => {
-    const present = new Set(allItems.map((i) => i.category));
-    return CATEGORY_TABS.filter((tab) => tab.key === 'all' || present.has(tab.key));
-  }, [allItems]);
+  // The browse grid only ever shows fixed, standalone items (Combos).
+  // Size/Protein/Extra/Drink/Breakfast Item are build-components only —
+  // they're picked inside the Build flow, never ordered on their own here.
+  const comboItems = useMemo(() => allItems.filter((i) => i.category === 'combo'), [allItems]);
 
   const filteredItems = useMemo(() => {
-    let list = allItems;
-    if (activeCategory !== 'all') list = list.filter((i) => i.category === activeCategory);
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(
-        (i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [allItems, activeCategory, query]);
+    if (!query.trim()) return comboItems;
+    const q = query.toLowerCase();
+    return comboItems.filter(
+      (i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q)
+    );
+  }, [comboItems, query]);
 
   function toggleFavorite(id: string) {
     setFavorites((prev) => {
@@ -105,6 +83,8 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
     ]);
     toast.success(`Added ${item.name} to cart`);
   }
+
+  const showsBuildBanner = selectedVendor?.supports_build === true;
 
   return (
     <div className="min-h-[100dvh] bg-[#fefaf4] [webkit-tap-highlight-color:transparent]">
@@ -138,49 +118,31 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search anything on the menu..."
+            placeholder="Search the menu..."
             className="w-full bg-white border border-gray-200 rounded-2xl pl-11 pr-4 py-3 text-sm outline-none focus:border-[#7a1d1d]/40"
           />
         </div>
 
-        {/* ── Promo banner ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-3xl bg-[#7a1d1d] text-white p-5 mb-6 relative overflow-hidden"
-        >
-          <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/10" />
-          <p className="text-white/70 text-xs font-bold uppercase tracking-wide mb-1">Build your own</p>
-          <p className="font-bold text-lg leading-tight mb-3">Prefer to customize your bowl?</p>
-          <button
-            onClick={onBuildOwn}
-            className="bg-white text-[#7a1d1d] text-sm font-bold px-4 py-2 rounded-xl hover:bg-white/90 transition-colors"
+        {/* ── "Build Your Own" banner — only for vendors that actually offer it ── */}
+        {showsBuildBanner && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-3xl bg-[#7a1d1d] text-white p-5 mb-6 relative overflow-hidden"
           >
-            Build Your Own →
-          </button>
-        </motion.div>
+            <div className="absolute -right-6 -bottom-6 w-28 h-28 rounded-full bg-white/10" />
+            <p className="text-white/70 text-xs font-bold uppercase tracking-wide mb-1">Also available</p>
+            <p className="font-bold text-lg leading-tight mb-3">You can also build your own bowl here</p>
+            <button
+              onClick={onBuildOwn}
+              className="bg-white text-[#7a1d1d] text-sm font-bold px-4 py-2 rounded-xl hover:bg-white/90 transition-colors"
+            >
+              Build Your Own →
+            </button>
+          </motion.div>
+        )}
 
-        {/* ── Category chips ── */}
-        <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
-          {availableCategories.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeCategory === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveCategory(tab.key)}
-                className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-colors ${
-                  isActive ? 'bg-[#7a1d1d] text-white' : 'bg-white text-gray-500 border border-gray-200'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── Item grid ── */}
+        {/* ── Item grid: fixed/Combo items only ── */}
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-7 h-7 text-[#7a1d1d] animate-spin" />
@@ -188,7 +150,9 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <UtensilsCrossed className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p className="font-medium">Nothing here yet.</p>
+            <p className="font-medium">
+              {showsBuildBanner ? 'No set items right now — try Build Your Own above.' : 'Nothing here yet.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
