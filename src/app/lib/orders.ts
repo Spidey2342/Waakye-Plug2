@@ -48,7 +48,7 @@ export async function createOrder({
       total_amount: totalAmount,
       delivery_address: deliveryAddress,
       payment_method: paymentMethod,
-      status: 'pending',
+      status: 'available',
     })
     .select()
     .single();
