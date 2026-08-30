@@ -22,10 +22,9 @@ interface HomeScreenProps {
   onOpenItem: (item: MenuItem) => void;
   onBuildOwn: () => void;
   onSwitchVendor: () => void;
-  onRewards: () => void;
 }
 
-export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }: HomeScreenProps) {
+export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor }: HomeScreenProps) {
   const { selectedVendor } = useVendor();
   const { addToCart } = useCart();
 
@@ -198,13 +197,6 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onRewards }
             })}
           </div>
         )}
-
-        <button
-          onClick={onRewards}
-          className="w-full mt-6 flex items-center justify-center gap-2 border-2 border-amber-300 bg-amber-50 text-amber-700 py-3 rounded-2xl font-bold text-sm hover:bg-amber-100 transition-colors"
-        >
-          Rewards & Leaderboard
-        </button>
       </div>
     </div>
   );

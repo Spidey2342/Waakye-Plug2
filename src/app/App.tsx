@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { checkOrderingStatus } from '@/app/utils/timeUtils';
 import { Breakfast } from '@/app/types/orderTypes';
 import { LandingScreen } from '@/app/components/screens/LandingScreen';
+import { HomeScreen } from '@/app/components/screens/HomeScreen';
+import { ItemDetailScreen } from '@/app/components/screens/ItemDetailScreen';
 import { ClosedScreen } from '@/app/components/screens/ClosedScreen';
 import { BuildWaakyeScreen } from '@/app/components/screens/BuildWaakyeScreen';
 import { SBlinkspage } from '@/app/components/screens/SBlinkspage';
 import { OrderSummaryScreen } from '@/app/components/screens/OrderSummaryScreen';
 import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen';
 import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen';
-import { RewardsScreen } from '@/app/components/screens/RewardsScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { VendorSelectScreen } from '@/app/components/screens/VendorSelectScreen';
 import { useUser } from '@/app/context/UserContext';
@@ -18,14 +19,11 @@ import { CartProvider, useCart } from '@/app/context/CartContext';
 import { VendorProvider, useVendor } from '@/app/context/VendorContext';
 import { FloatingCartButton } from '@/app/components/FloatingCartButton';
 import { saveOrder } from '@/app/utils/orderHistory';
-import { recordOrder } from '@/app/lib/game-service';
 import { createOrder } from '@/app/lib/orders';
-import { Toaster, toast } from 'sonner';
-import { HomeScreen } from '@/app/components/screens/HomeScreen';
-import { ItemDetailScreen } from '@/app/components/screens/ItemDetailScreen';
 import type { MenuItem } from '@/app/lib/vendorMenu';
+import { Toaster, toast } from 'sonner';
 
-type Screen = 'landing' | 'home' | 'itemDetail' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'rewards';
+type Screen = 'landing' | 'home' | 'itemDetail' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history';
 type OrderType = 'waakye' | 'breakfast';
 
 // CartProvider has to sit above everything that calls useCart(), so App itself
@@ -44,14 +42,12 @@ function AppContent() {
   const { hasUser, userId, phone, username, ready } = useUser();
   const { addToCart, clearCart, itemsSubtotal, lines, deliveryMode, customerLocation, paymentMethod, totalPrice } = useCart();
   const { selectedVendor, clearVendor } = useVendor();
-const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
   const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
   const [orderType, setOrderType] = useState<OrderType>('waakye');
-  const [canSpin, setCanSpin] = useState(false);
-  const [pointsEarned, setPointsEarned] = useState(0);
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
     drink: 'tea',
     extras: [],
@@ -70,7 +66,6 @@ const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
       const newStatus = checkOrderingStatus();
       setOrderingStatus(newStatus);
       if (!newStatus.isOpen && ['landing', 'home', 'itemDetail', 'build', 'build2', 'summary'].includes(currentScreen)) {
-
         setCurrentScreen('closed');
       }
       if (newStatus.isOpen && currentScreen === 'closed') {
@@ -120,13 +115,18 @@ const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
     addToCart(selectedVendor.id, items);
     setCurrentScreen('summary');
   }
-function handleItemAddToCart(items: import('@/app/context/CartContext').OrderLineItem[]) {
-  if (!selectedVendor) return;
-  addToCart(selectedVendor.id, items);
-  toast.success(`Added to cart`);
-  setCurrentScreen('home');
-}
-  // ── Order confirmed: write the real order, THEN record points ──────────────
+
+  // ── Single item added from the browse/detail flow: add + drop back into
+  // browsing rather than jumping straight to checkout, matching how the
+  // Bolt-style reference lets you keep shopping after adding one thing.
+  function handleItemAddToCart(items: import('@/app/context/CartContext').OrderLineItem[]) {
+    if (!selectedVendor) return;
+    addToCart(selectedVendor.id, items);
+    toast.success(`Added to cart`);
+    setCurrentScreen('home');
+  }
+
+  // ── Order confirmed: write the real order ───────────────────────────────
   async function handleOrderConfirmed() {
     if (!selectedVendor) return;
 
@@ -146,12 +146,6 @@ function handleItemAddToCart(items: import('@/app/context/CartContext').OrderLin
       return; // stay on the summary screen, nothing was actually sent
     }
 
-    try {
-      const result = await recordOrder(phone, username, itemsSubtotal);
-      setPointsEarned(result.pointsEarned);
-    } catch (e) {
-      console.error('Could not record order', e);
-    }
     setCurrentScreen('confirm');
   }
 
@@ -163,57 +157,54 @@ function handleItemAddToCart(items: import('@/app/context/CartContext').OrderLin
   const handleTimerComplete = () => setCurrentScreen('closed');
 
   const renderScreen = () => {
-    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history', 'rewards'].includes(currentScreen)) {
+    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history'].includes(currentScreen)) {
       return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
     }
 
     switch (currentScreen) {
-   case 'landing':
-  return (
-    <LandingScreen
-      timeUntilClose={orderingStatus.timeUntilClose}
-      onStart={() => { setOrderType('waakye'); setCurrentScreen('home'); }}
-      onBuild={() => toast('Breakfast ordering is coming soon!')}
-      onTimerComplete={handleTimerComplete}
-      onRewards={() => setCurrentScreen('rewards')}
-      onSwitchVendor={clearVendor}
-    />
-  );
+      case 'landing':
+        return (
+          <LandingScreen
+            timeUntilClose={orderingStatus.timeUntilClose}
+            onStart={() => { setOrderType('waakye'); setCurrentScreen('home'); }}
+            onBuild={() => toast('Breakfast ordering is coming soon!')}
+            onTimerComplete={handleTimerComplete}
+            onSwitchVendor={clearVendor}
+          />
+        );
 
-case 'home':
-  return (
-    <HomeScreen
-      onOpenItem={(item) => { setSelectedItem(item); setCurrentScreen('itemDetail'); }}
-      onBuildOwn={() => setCurrentScreen('build')}
-      onSwitchVendor={clearVendor}
-      onRewards={() => setCurrentScreen('rewards')}
-    />
-  );
+      case 'home':
+        return (
+          <HomeScreen
+            onOpenItem={(item) => { setSelectedItem(item); setCurrentScreen('itemDetail'); }}
+            onBuildOwn={() => setCurrentScreen('build')}
+            onSwitchVendor={clearVendor}
+          />
+        );
 
-case 'itemDetail':
-  if (!selectedItem) {
-    setCurrentScreen('home');
-    return null;
-  }
-  return (
-    <ItemDetailScreen
-      item={selectedItem}
-      onBack={() => setCurrentScreen('home')}
-      onAddToCart={handleItemAddToCart}
-    />
-  );
-
+      case 'itemDetail':
+        if (!selectedItem) {
+          setCurrentScreen('home');
+          return null;
+        }
+        return (
+          <ItemDetailScreen
+            item={selectedItem}
+            onBack={() => setCurrentScreen('home')}
+            onAddToCart={handleItemAddToCart}
+          />
+        );
 
       case 'closed':
         return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
 
       case 'build':
         return (
-  <BuildWaakyeScreen
-    onBack={() => setCurrentScreen('home')}
-    onAddToCart={handleWaakyeAddToCart}
-  />
-);
+          <BuildWaakyeScreen
+            onBack={() => setCurrentScreen('home')}
+            onAddToCart={handleWaakyeAddToCart}
+          />
+        );
 
       case 'build2':
         // Dormant for now — breakfast hasn't been converted to the DB-driven
@@ -233,11 +224,11 @@ case 'itemDetail':
         // No more order/orderType/onUpdateOrder props — OrderSummaryScreen
         // reads everything straight from useCart().
         return (
-           <OrderSummaryScreen
-    onBack={() => setCurrentScreen('home')}
-    onConfirm={handleOrderConfirmed}
-  />
-);
+          <OrderSummaryScreen
+            onBack={() => setCurrentScreen('home')}
+            onConfirm={handleOrderConfirmed}
+          />
+        );
 
       case 'confirm':
         return (
@@ -245,7 +236,6 @@ case 'itemDetail':
             orderId={lastOrderId}
             onSaveOrder={saveOrder}
             onDone={handleOrderDone}
-            pointsEarned={pointsEarned}
           />
         );
 
@@ -269,14 +259,6 @@ case 'itemDetail':
           />
         );
 
-      case 'rewards':
-        return (
-          <RewardsScreen
-            onBack={() => setCurrentScreen(canSpin ? 'confirm' : 'landing')}
-            canSpin={canSpin}
-          />
-        );
-
       default:
         return (
           <LandingScreen
@@ -292,9 +274,9 @@ case 'itemDetail':
     <div className="size-full">
       <Toaster position="top-center" richColors />
       {renderScreen()}
-     {['landing', 'home', 'build', 'build2'].includes(currentScreen) && (
-  <FloatingCartButton onClick={() => setCurrentScreen('summary')} />
-)}
+      {['landing', 'home', 'build', 'build2'].includes(currentScreen) && (
+        <FloatingCartButton onClick={() => setCurrentScreen('summary')} />
+      )}
     </div>
   );
 }

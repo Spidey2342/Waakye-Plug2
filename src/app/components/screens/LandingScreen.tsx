@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { CountdownTimer } from '@/app/components/CountdownTimer';
 import { ImageWithFallback } from '@/app/components/figma/ImageWithFallback';
-import { ArrowRight, Trophy, Clock, Soup, Croissant, Store } from 'lucide-react';
+import { ArrowRight, Clock, Soup, Croissant, Store } from 'lucide-react';
 import { useVendor } from '@/app/context/VendorContext';
 
 interface LandingScreenProps {
@@ -9,7 +9,6 @@ interface LandingScreenProps {
   onStart: () => void;
   onBuild: () => void;
   onTimerComplete: () => void;
-  onRewards: () => void;
   onSwitchVendor: () => void;
 }
 
@@ -18,7 +17,6 @@ export function LandingScreen({
   onStart,
   onBuild,
   onTimerComplete,
-  onRewards,
   onSwitchVendor,
 }: LandingScreenProps) {
   const { selectedVendor } = useVendor();
@@ -138,22 +136,6 @@ export function LandingScreen({
             </motion.button>
           </div>
         </div>
-
-        {/* Rewards link */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="px-4 mt-4"
-        >
-          <button
-            onClick={onRewards}
-            className="w-full flex items-center justify-center gap-2 border-2 border-amber-300 bg-amber-50 text-amber-700 py-3 rounded-2xl font-bold text-sm hover:bg-amber-100 transition-colors"
-          >
-            <Trophy className="w-4 h-4" />
-            Rewards & Leaderboard
-          </button>
-        </motion.div>
 
         <p className="text-center text-xs text-gray-400 mt-4">⚡ Limited bowls today</p>
       </div>

@@ -10,7 +10,6 @@ interface ConfirmationScreenProps {
   orderId: string | null;
   onDone: () => void;
   onSaveOrder: (order: any) => void;
-  pointsEarned: number;
 }
 
 type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
@@ -24,7 +23,7 @@ const STATUS_STEPS: { key: OrderStatus; label: string; icon: any }[] = [
   { key: 'delivered', label: 'Delivered', icon: Home },
 ];
 
-export function ConfirmationScreen({ orderId, onDone, onSaveOrder, pointsEarned }: ConfirmationScreenProps) {
+export function ConfirmationScreen({ orderId, onDone, onSaveOrder }: ConfirmationScreenProps) {
   const { lines, totalPrice } = useCart();
   const [status, setStatus] = useState<OrderStatus>('pending');
 
@@ -136,15 +135,6 @@ export function ConfirmationScreen({ orderId, onDone, onSaveOrder, pointsEarned 
                 </div>
               </div>
 
-              {pointsEarned > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-sm text-amber-700 mb-5"
-                >
-                  ⭐ You earned <strong>+{pointsEarned} points</strong> for this order!
-                </motion.div>
-              )}
             </>
           )}
 
