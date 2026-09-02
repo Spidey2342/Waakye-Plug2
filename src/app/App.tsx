@@ -158,7 +158,7 @@ function AppContent() {
   const handleTimerComplete = () => setCurrentScreen('closed');
 
   const renderScreen = () => {
-    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history', 'myOrders'].includes(currentScreen) {
+    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history', 'myOrders'].includes(currentScreen)){
       return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
     }
 
