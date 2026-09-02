@@ -8,8 +8,8 @@ import {
   UtensilsCrossed,
   Heart,
   Plus,
-  Loader2,
   Package,
+  Loader2,
   Store,
   ChevronRight,
 } from 'lucide-react';
@@ -111,20 +111,13 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onMyOrders 
               <span className="max-w-[90px] truncate">{selectedVendor.location}</span>
             </div>
           )}
-                    {selectedVendor?.location && (
-            <div className="flex items-center gap-1 text-xs text-gray-400 shrink-0">
-              <MapPin className="w-3.5 h-3.5" />
-              <span className="max-w-[90px] truncate">{selectedVendor.location}</span>
-            </div>
-          )}
-          <button
+               <button
             onClick={onMyOrders}
             className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0"
             aria-label="My Orders"
           >
             <Package className="w-4 h-4 text-gray-500" />
           </button>
-        </div>
         </div>
 
         {/* ── Search ── */}
