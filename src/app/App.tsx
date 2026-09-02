@@ -14,6 +14,7 @@ import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen'
 import { OrderHistoryScreen } from '@/app/components/screens/OrderHistoryScreen';
 import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
 import { VendorSelectScreen } from '@/app/components/screens/VendorSelectScreen';
+import { MyOrdersScreen } from '@/app/components/screens/MyOrdersScreen';
 import { useUser } from '@/app/context/UserContext';
 import { CartProvider, useCart } from '@/app/context/CartContext';
 import { VendorProvider, useVendor } from '@/app/context/VendorContext';
@@ -23,7 +24,7 @@ import { createOrder } from '@/app/lib/orders';
 import type { MenuItem } from '@/app/lib/vendorMenu';
 import { Toaster, toast } from 'sonner';
 
-type Screen = 'landing' | 'home' | 'itemDetail' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history';
+type Screen = 'landing' | 'home' | 'itemDetail' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'history' | 'myOrders';
 type OrderType = 'waakye' | 'breakfast';
 
 // CartProvider has to sit above everything that calls useCart(), so App itself
@@ -157,7 +158,7 @@ function AppContent() {
   const handleTimerComplete = () => setCurrentScreen('closed');
 
   const renderScreen = () => {
-    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history'].includes(currentScreen)) {
+    if (!orderingStatus.isOpen && !['closed', 'confirm', 'history', 'myOrders'].includes(currentScreen) {
       return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
     }
 
@@ -172,15 +173,18 @@ function AppContent() {
             onSwitchVendor={clearVendor}
           />
         );
-
       case 'home':
         return (
           <HomeScreen
             onOpenItem={(item) => { setSelectedItem(item); setCurrentScreen('itemDetail'); }}
             onBuildOwn={() => setCurrentScreen('build')}
             onSwitchVendor={clearVendor}
+            onMyOrders={() => setCurrentScreen('myOrders')}
           />
         );
+
+      case 'myOrders':
+        return <MyOrdersScreen onBack={() => setCurrentScreen('home')} />;
 
       case 'itemDetail':
         if (!selectedItem) {

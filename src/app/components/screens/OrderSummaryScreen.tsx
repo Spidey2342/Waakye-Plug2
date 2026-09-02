@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { ChevronLeft, Minus, Plus, Trash2, Package, Truck, Banknote, Smartphone } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Trash2, Banknote, Smartphone } from 'lucide-react';
 import { MenuItemThumbnail } from '@/app/components/MenuItemThumbnail';
 import { useCart, CartLine, lineUnitPrice } from '@/app/context/CartContext';
 import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
@@ -15,7 +15,6 @@ interface OrderSummaryScreenProps {
 export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProps) {
   const {
     lines, updateQuantity, removeLine,
-    deliveryMode, toggleDeliveryMode,
     customerPhone, setCustomerPhone,
     customerLocation, setCustomerLocation,
     paymentMethod, setPaymentMethod,
@@ -75,6 +74,12 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
   const otherItems = (line: CartLine) => line.items.filter((i) => i.category !== 'base' && i.category !== 'combo');
 
   const isEmpty = lines.length === 0;
+
+  // Delivery is the only mode — no pickup, so a real address is always
+  // required. A single word or a few random characters won't count; it'd
+  // fail to geocode on the rider's end and strand the order.
+  const hasUsableAddress = customerLocation.trim().length >= 8;
+  const canSubmit = !!customerPhone && hasUsableAddress;
 
   return (
     <div className="min-h-[100dvh] bg-[#fefaf4] flex flex-col [webkit-tap-highlight-color:transparent]">
@@ -166,34 +171,6 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
                 + Add another item
               </button>
 
-              {/* ── Delivery mode ── */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
-              >
-                <div className="font-bold text-sm mb-3">Delivery Mode</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button disabled className="p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed opacity-60">
-                    <Package className="w-6 h-6 mx-auto mb-2 text-gray-400" />
-                    <div className="font-bold text-sm">Pickup</div>
-                    <div className="text-xs text-gray-500 mt-1">Coming soon</div>
-                  </button>
-
-                  <button
-                    onClick={toggleDeliveryMode}
-                    className={`p-4 rounded-xl border transition-all ${
-                      deliveryMode === 'delivery' ? 'border-[#7a1d1d] bg-[#7a1d1d]/5' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <Truck className={`w-6 h-6 mx-auto mb-2 ${deliveryMode === 'delivery' ? 'text-[#7a1d1d]' : 'text-gray-400'}`} />
-                    <div className="font-bold text-sm">Delivery</div>
-                    <div className="text-xs text-gray-500 mt-1">+GH₵{DELIVERY_FEE}</div>
-                  </button>
-                </div>
-              </motion.div>
-
               {/* ── Payment method — required for the real order write ── */}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -227,44 +204,45 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
                 </div>
               </motion.div>
 
-              {/* ── Contact + delivery details merged into one card ── */}
-              {deliveryMode === 'delivery' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.24 }}
-                  className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-4"
-                >
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      placeholder="e.g. 024XXXXXXX"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(formatTo233(e.target.value))}
-                      className="w-full border border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none text-sm"
-                    />
-                  </div>
+              {/* ── Contact + delivery details — always shown, delivery is the only mode ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.24 }}
+                className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    placeholder="e.g. 024XXXXXXX"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(formatTo233(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none text-sm"
+                  />
+                </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-gray-700">Delivery Location</label>
-                      <button onClick={detectLocation} disabled={locating} className="text-xs font-bold text-[#7a1d1d] hover:underline disabled:opacity-50">
-                        {locating ? 'Locating…' : 'Auto-detect'}
-                      </button>
-                    </div>
-                    <textarea
-                      placeholder="Describe your location or use auto-detect"
-                      value={customerLocation}
-                      onChange={(e) => setCustomerLocation(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none text-sm"
-                      rows={3}
-                    />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Delivery Location</label>
+                    <button onClick={detectLocation} disabled={locating} className="text-xs font-bold text-[#7a1d1d] hover:underline disabled:opacity-50">
+                      {locating ? 'Locating…' : 'Auto-detect'}
+                    </button>
                   </div>
-                </motion.div>
-              )}
+                  <textarea
+                    placeholder="Describe your location or use auto-detect"
+                    value={customerLocation}
+                    onChange={(e) => setCustomerLocation(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl p-3 focus:border-[#7a1d1d] outline-none text-sm"
+                    rows={3}
+                  />
+                  {customerLocation.trim().length > 0 && !hasUsableAddress && (
+                    <p className="text-xs text-red-500 mt-1">Please add a bit more detail so the rider can find you.</p>
+                  )}
+                </div>
+              </motion.div>
 
               <motion.p
                 initial={{ opacity: 0 }}
@@ -272,7 +250,7 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
                 transition={{ delay: 0.3 }}
                 className="text-xs text-gray-400 text-center px-2"
               >
-                📝 Your order goes straight to the vendor — they'll confirm pickup/delivery details with you directly.
+                📝 Your order goes straight to the vendor — they'll confirm delivery details with you directly.
               </motion.p>
             </div>
           </div>
@@ -284,12 +262,10 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
                   <span className="text-gray-500">Subtotal</span>
                   <span className="text-gray-700">GH₵{itemsSubtotal}</span>
                 </div>
-                {deliveryMode === 'delivery' && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">Delivery Fee</span>
-                    <span className="text-gray-700">GH₵{DELIVERY_FEE}</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Delivery Fee</span>
+                  <span className="text-gray-700">GH₵{DELIVERY_FEE}</span>
+                </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">Service Fee</span>
                   <span className="text-gray-700">GH₵{SERVICE_FEE}</span>
@@ -301,9 +277,9 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
               </div>
               <button
                 onClick={onConfirm}
-                disabled={deliveryMode === 'delivery' && (!customerPhone || !customerLocation)}
+                disabled={!canSubmit}
                 className={`w-full py-4 rounded-2xl font-bold text-lg transition-colors ${
-                  deliveryMode === 'delivery' && (!customerPhone || !customerLocation)
+                  !canSubmit
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-[#7a1d1d] text-white hover:bg-[#6a1717]'
                 }`}
@@ -316,4 +292,4 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
       )}
     </div>
   );
-}
+} 
