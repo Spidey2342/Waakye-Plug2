@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { ChevronLeft, Package, Bike, CheckCircle2, XCircle, Clock, Loader2, MapPin } from 'lucide-react';
 import { fetchMyOrders, type CustomerOrder } from '@/app/lib/customerOrders';
 import { useUser } from '@/app/context/UserContext';
+import { supabase } from '@/app/lib/supabase';
 
 interface MyOrdersScreenProps {
   onBack: () => void;
@@ -49,8 +50,21 @@ export function MyOrdersScreen({ onBack }: MyOrdersScreenProps) {
     }
 
     load();
-    const interval = setInterval(load, 15000);
-    return () => { cancelled = true; clearInterval(interval); };
+    // Real-time: any change to this customer's own orders (a rider gets
+    // assigned, picks up, delivers) shows up immediately, without needing
+    // to reopen the screen.
+    const channel = supabase
+      .channel(`my-orders-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `customer_id=eq.${userId}` },
+        () => load()
+      )
+      .subscribe();
+
+    // Fallback safety net in case the realtime connection ever drops.
+    const interval = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(interval); supabase.removeChannel(channel); };
   }, [userId]);
 
   return (
