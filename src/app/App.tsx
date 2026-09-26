@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { checkOrderingStatus } from '@/app/utils/timeUtils';
+import { getPlatformOrderingStatus, canPlaceOrders as canPlaceOrdersNow } from '@/app/utils/timeUtils';
+import { vendorAcceptingOrders } from '@/app/lib/vendorHours';
 import { Breakfast } from '@/app/types/orderTypes';
 import { LandingScreen } from '@/app/components/screens/LandingScreen';
 import { HomeScreen } from '@/app/components/screens/HomeScreen';
 import { ItemDetailScreen } from '@/app/components/screens/ItemDetailScreen';
 import { ClosedScreen } from '@/app/components/screens/ClosedScreen';
+import { VendorClosedScreen } from '@/app/components/screens/VendorClosedScreen';
 import { BuildWaakyeScreen } from '@/app/components/screens/BuildWaakyeScreen';
 import { SBlinkspage } from '@/app/components/screens/SBlinkspage';
 import { OrderSummaryScreen } from '@/app/components/screens/OrderSummaryScreen';
 import { ConfirmationScreen } from '@/app/components/screens/ConfirmationScreen';
-import { MyOrdersScreen } from '@/app/components/screens/MyOrdersScreen';import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
-import { VendorSelectScreen } from '@/app/components/screens/VendorSelectScreen';
 import { MyOrdersScreen } from '@/app/components/screens/MyOrdersScreen';
+import { UsernameScreen } from '@/app/components/screens/UsernameScreen';
+import { VendorSelectScreen } from '@/app/components/screens/VendorSelectScreen';
 import { useUser } from '@/app/context/UserContext';
 import { CartProvider, useCart } from '@/app/context/CartContext';
 import { VendorProvider, useVendor } from '@/app/context/VendorContext';
@@ -22,11 +24,11 @@ import { createOrder } from '@/app/lib/orders';
 import type { MenuItem } from '@/app/lib/vendorMenu';
 import { Toaster, toast } from 'sonner';
 
-type Screen = 'landing' | 'home' | 'itemDetail' | 'closed' | 'build' | 'build2' | 'summary' | 'confirm' | 'myOrders';
+type Screen = 'landing' | 'home' | 'itemDetail' | 'build' | 'build2' | 'summary' | 'confirm' | 'myOrders';
 type OrderType = 'waakye' | 'breakfast';
 
-// CartProvider has to sit above everything that calls useCart(), so App itself
-// is now just a thin wrapper and the real logic lives in AppContent.
+const ORDERING_SCREENS: Screen[] = ['landing', 'home', 'itemDetail', 'build', 'build2', 'summary'];
+
 export default function App() {
   return (
     <CartProvider>
@@ -38,44 +40,53 @@ export default function App() {
 }
 
 function AppContent() {
-  const { hasUser, userId, phone, username, ready } = useUser();
-  const { addToCart, clearCart, itemsSubtotal, lines, deliveryMode, customerLocation, deliveryLat, deliveryLng, paymentMethod, totalPrice } = useCart();
+  const { hasUser, userId, ready } = useUser();
+  const { addToCart, clearCart, lines, deliveryMode, customerLocation, deliveryLat, deliveryLng, paymentMethod, totalPrice } =
+    useCart();
   const { selectedVendor, clearVendor } = useVendor();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('landing');
-  const [orderingStatus, setOrderingStatus] = useState(checkOrderingStatus());
+  const [platformStatus, setPlatformStatus] = useState(getPlatformOrderingStatus());
   const [orderType, setOrderType] = useState<OrderType>('waakye');
   const [lastOrderId, setLastOrderId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [breakfastOrder, setBreakfastOrder] = useState<Breakfast>({
     drink: 'tea',
     extras: [],
-    deliveryMode: 'pickup',
+    deliveryMode: 'delivery',
   });
 
-  // ── Time-based open/close polling ──────────────────────────────────────────
+  const vendorIsOpen = selectedVendor ? vendorAcceptingOrders(selectedVendor) : false;
+  const canOrder = canPlaceOrdersNow(platformStatus.isOpen, vendorIsOpen);
+
   useEffect(() => {
-    const status = checkOrderingStatus();
-    setOrderingStatus(status);
-    if (!status.isOpen && currentScreen === 'landing') {
-      setCurrentScreen('closed');
-    }
-
-    const interval = setInterval(() => {
-      const newStatus = checkOrderingStatus();
-      setOrderingStatus(newStatus);
-      if (!newStatus.isOpen && ['landing', 'home', 'itemDetail', 'build', 'build2', 'summary'].includes(currentScreen)) {
-        setCurrentScreen('closed');
-      }
-      if (newStatus.isOpen && currentScreen === 'closed') {
-        setCurrentScreen('landing');
-      }
-    }, 10000);
-
+    const tick = () => setPlatformStatus(getPlatformOrderingStatus());
+    tick();
+    const interval = setInterval(tick, 10_000);
     return () => clearInterval(interval);
-  }, [currentScreen]);
+  }, []);
 
-  // ── Wait for the anonymous session + profile lookup to resolve ─────────────
+  function handleSwitchVendor() {
+    clearCart();
+    clearVendor();
+  }
+
+  function guardOrderingAction(): boolean {
+    if (!platformStatus.isOpen) {
+      toast.error('Waakye Plug is closed for tonight — ordering opens at midnight.');
+      return false;
+    }
+    if (!selectedVendor?.is_open) {
+      toast.error(`${selectedVendor?.business_name ?? 'This vendor'} is closed (admin toggle).`);
+      return false;
+    }
+    if (!vendorIsOpen) {
+      toast.error(`${selectedVendor?.business_name ?? 'This vendor'} is outside their ordering hours.`);
+      return false;
+    }
+    return true;
+  }
+
   if (!ready) {
     return (
       <>
@@ -87,7 +98,6 @@ function AppContent() {
     );
   }
 
-  // ── Username gate — show before anything else ──────────────────────────────
   if (!hasUser) {
     return (
       <>
@@ -97,7 +107,6 @@ function AppContent() {
     );
   }
 
-  // ── Vendor gate — pick who you're ordering from before browsing a menu ─────
   if (!selectedVendor) {
     return (
       <>
@@ -107,27 +116,21 @@ function AppContent() {
     );
   }
 
-  // ── Waakye builder → cart. Breakfast temporarily disabled (see LandingScreen
-  // wiring below) since SBlinkspage hasn't been converted to this model yet.
   function handleWaakyeAddToCart(items: import('@/app/context/CartContext').OrderLineItem[]) {
-    if (!selectedVendor) return;
+    if (!selectedVendor || !guardOrderingAction()) return;
     addToCart(selectedVendor.id, items);
     setCurrentScreen('summary');
   }
 
-  // ── Single item added from the browse/detail flow: add + drop back into
-  // browsing rather than jumping straight to checkout, matching how the
-  // Bolt-style reference lets you keep shopping after adding one thing.
   function handleItemAddToCart(items: import('@/app/context/CartContext').OrderLineItem[]) {
-    if (!selectedVendor) return;
+    if (!selectedVendor || !guardOrderingAction()) return;
     addToCart(selectedVendor.id, items);
-    toast.success(`Added to cart`);
+    toast.success('Added to cart');
     setCurrentScreen('home');
   }
 
-  // ── Order confirmed: write the real order ───────────────────────────────
   async function handleOrderConfirmed() {
-    if (!selectedVendor) return;
+    if (!selectedVendor || !guardOrderingAction()) return;
 
     try {
       if (
@@ -154,7 +157,7 @@ function AppContent() {
     } catch (e) {
       console.error('Could not create order', e);
       toast.error('Could not place your order — please try again.');
-      return; // stay on the summary screen, nothing was actually sent
+      return;
     }
 
     setCurrentScreen('confirm');
@@ -162,37 +165,54 @@ function AppContent() {
 
   function handleOrderDone() {
     clearCart();
-    // Single order-history destination: MyOrdersScreen reads live Supabase
-    // data with realtime status updates. The duplicate OrderHistoryScreen
-    // (same table, no live updates) was removed — see AUDIT.md P2.
     setCurrentScreen('myOrders');
   }
 
-  const handleTimerComplete = () => setCurrentScreen('closed');
+  const goMyOrders = () => setCurrentScreen('myOrders');
 
   const renderScreen = () => {
-    if (!orderingStatus.isOpen && !['closed', 'confirm', 'myOrders'].includes(currentScreen)){
-      return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
+    const onOrderingFlow = ORDERING_SCREENS.includes(currentScreen);
+
+    if (!platformStatus.isOpen && onOrderingFlow) {
+      return <ClosedScreen timeUntilOpen={platformStatus.timeUntilOpen} onViewOrders={goMyOrders} />;
+    }
+
+    if (platformStatus.isOpen && !vendorIsOpen && onOrderingFlow) {
+      return (
+        <VendorClosedScreen onSwitchVendor={handleSwitchVendor} onViewOrders={goMyOrders} />
+      );
     }
 
     switch (currentScreen) {
       case 'landing':
         return (
           <LandingScreen
-            timeUntilClose={orderingStatus.timeUntilClose}
-            onStart={() => { setOrderType('waakye'); setCurrentScreen('home'); }}
+            timeUntilClose={platformStatus.timeUntilClose}
+            platformIsOpen={platformStatus.isOpen}
+            vendorIsOpen={vendorIsOpen}
+            onStart={() => {
+              if (!guardOrderingAction()) return;
+              setOrderType('waakye');
+              setCurrentScreen('home');
+            }}
             onBuild={() => toast('Breakfast ordering is coming soon!')}
-            onTimerComplete={handleTimerComplete}
-            onSwitchVendor={clearVendor}
+            onSwitchVendor={handleSwitchVendor}
           />
         );
       case 'home':
         return (
           <HomeScreen
-            onOpenItem={(item) => { setSelectedItem(item); setCurrentScreen('itemDetail'); }}
-            onBuildOwn={() => setCurrentScreen('build')}
-            onSwitchVendor={clearVendor}
-            onMyOrders={() => setCurrentScreen('myOrders')}
+            onOpenItem={(item) => {
+              if (!guardOrderingAction()) return;
+              setSelectedItem(item);
+              setCurrentScreen('itemDetail');
+            }}
+            onBuildOwn={() => {
+              if (!guardOrderingAction()) return;
+              setCurrentScreen('build');
+            }}
+            onSwitchVendor={handleSwitchVendor}
+            onMyOrders={goMyOrders}
           />
         );
 
@@ -201,8 +221,7 @@ function AppContent() {
           <MyOrdersScreen
             onBack={() => setCurrentScreen('home')}
             onOrderAgain={() => {
-              // "Order again" opens a fresh builder — the builder fetches
-              // fresh menu data rather than accepting a prefilled order.
+              if (!guardOrderingAction()) return;
               setOrderType('waakye');
               setCurrentScreen('build');
             }}
@@ -222,9 +241,6 @@ function AppContent() {
           />
         );
 
-      case 'closed':
-        return <ClosedScreen timeUntilOpen={orderingStatus.timeUntilOpen} />;
-
       case 'build':
         return (
           <BuildWaakyeScreen
@@ -234,10 +250,6 @@ function AppContent() {
         );
 
       case 'build2':
-        // Dormant for now — breakfast hasn't been converted to the DB-driven
-        // cart model yet, and this screen is unreachable from LandingScreen
-        // until it is. Left in place rather than deleted so SBlinkspage isn't
-        // silently broken if it's reached some other way.
         return (
           <SBlinkspage
             order={breakfastOrder}
@@ -248,29 +260,26 @@ function AppContent() {
         );
 
       case 'summary':
-        // No more order/orderType/onUpdateOrder props — OrderSummaryScreen
-        // reads everything straight from useCart().
         return (
           <OrderSummaryScreen
             onBack={() => setCurrentScreen('home')}
             onConfirm={handleOrderConfirmed}
+            canPlaceOrders={canOrder}
           />
         );
 
       case 'confirm':
-        return (
-          <ConfirmationScreen
-            orderId={lastOrderId}
-            onDone={handleOrderDone}
-          />
-        );
+        return <ConfirmationScreen orderId={lastOrderId} onDone={handleOrderDone} />;
 
       default:
         return (
           <LandingScreen
-            timeUntilClose={orderingStatus.timeUntilClose}
-            onStart={() => setCurrentScreen('build')}
-            onTimerComplete={handleTimerComplete}
+            timeUntilClose={platformStatus.timeUntilClose}
+            platformIsOpen={platformStatus.isOpen}
+            vendorIsOpen={vendorIsOpen}
+            onStart={() => setCurrentScreen('home')}
+            onBuild={() => toast('Breakfast ordering is coming soon!')}
+            onSwitchVendor={handleSwitchVendor}
           />
         );
     }
@@ -280,7 +289,7 @@ function AppContent() {
     <div className="size-full">
       <Toaster position="top-center" richColors />
       {renderScreen()}
-      {['landing', 'home', 'build', 'build2'].includes(currentScreen) && (
+      {canOrder && ['landing', 'home', 'build', 'build2'].includes(currentScreen) && (
         <FloatingCartButton onClick={() => setCurrentScreen('summary')} />
       )}
     </div>

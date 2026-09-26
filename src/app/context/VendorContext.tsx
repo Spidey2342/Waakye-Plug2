@@ -1,7 +1,9 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
-import { getApprovedVendors, distanceKm, type Vendor } from '@/app/lib/vendorMenu';
+import { getApprovedVendors, getVendorById, distanceKm, type Vendor } from '@/app/lib/vendorMenu';
+
+export type { Vendor } from '@/app/lib/vendorMenu';
 
 export type VendorWithDistance = Vendor & { distanceKm: number | null };
 
@@ -13,6 +15,7 @@ interface VendorContextType {
   selectedVendor: Vendor | null;
   selectVendor: (vendor: Vendor) => void;
   clearVendor: () => void;
+  refreshSelectedVendor: () => Promise<void>;
   locationStatus: LocationStatus;
   requestLocation: () => void;
 }
@@ -96,6 +99,25 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setSelectedVendor(null);
   }
 
+  async function refreshSelectedVendor() {
+    if (!selectedVendor) return;
+    try {
+      const fresh = await getVendorById(selectedVendor.id);
+      if (fresh) setSelectedVendor(fresh);
+    } catch (err) {
+      console.error('Could not refresh vendor', err);
+    }
+  }
+
+  // Keep is_open in sync while the customer is browsing (admin may toggle closed).
+  useEffect(() => {
+    if (!selectedVendor) return;
+    refreshSelectedVendor();
+    const interval = setInterval(refreshSelectedVendor, 30_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when vendor id changes only
+  }, [selectedVendor?.id]);
+
   return (
     <VendorContext.Provider
       value={{
@@ -104,6 +126,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
         selectedVendor,
         selectVendor,
         clearVendor,
+        refreshSelectedVendor,
         locationStatus,
         requestLocation,
       }}

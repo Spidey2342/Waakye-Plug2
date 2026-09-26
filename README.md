@@ -41,6 +41,7 @@ Note: `npm run build` is `vite build` only — **no `tsc` in the build script** 
 | [docs/FEATURES.md](docs/FEATURES.md) | Every screen, lib, context, migration, helper component |
 | [docs/SETUP.md](docs/SETUP.md) | Env, scripts, migrations apply notes |
 | [docs/OPERATIONS.md](docs/OPERATIONS.md) | Hours gating, fees, WhatsApp group, gaps |
+| [docs/VENDOR_ORDERING_HOURS.md](docs/VENDOR_ORDERING_HOURS.md) | **Platform 9 PM cutoff + per-vendor daily hours** (team rollout) |
 | [AUDIT.md](AUDIT.md) | Security/bug audit + fix log (keep) |
 
 ## Platform constants
@@ -60,7 +61,7 @@ Note: `npm run build` is `vite build` only — **no `tsc` in the build script** 
 ## Known open gaps
 
 - **Breakfast (P3):** Landing “breakfast” → toast “coming soon”; `SBlinkspage` dormant / unreachable from primary CTA
-- **Hours (P4):** Comments/copy say ~5:30–8:00 AM; `timeUtils` uses `openTime = 0`, `closeTime = 23:59` (effectively always open). ClosedScreen copy also mentions 5:00 PM pre-orders — **Lumora decision needed**
+- **Hours:** Platform closes **9 PM**; per-vendor `daily_opens_at` / `daily_closes_at` — see [docs/VENDOR_ORDERING_HOURS.md](docs/VENDOR_ORDERING_HOURS.md). Migration `2026-09-26_vendor_daily_hours.sql` must be applied on Supabase.
 - Build has **no `tsc`** step
 - `createOrder` does **not** send `delivery_fee` — relies on **DB column default**
 - Pickup mode is a disabled “coming soon” affordance; delivery-only in practice

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useState, useMemo } from 'react';
 import { Store, MapPin, Search, Loader2, LocateFixed, UtensilsCrossed } from 'lucide-react';
 import { useVendor, type Vendor } from '@/app/context/VendorContext';
+import { vendorAcceptingOrders } from '@/app/lib/vendorHours';
 
 interface VendorSelectScreenProps {
   onSelect: () => void;
@@ -15,7 +16,7 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
   const [filter, setFilter] = useState<'all' | 'open' | 'nearby'>('all');
 
   function handlePick(vendor: Vendor) {
-    if (!vendor.is_open) return;
+    if (!vendorAcceptingOrders(vendor)) return;
     selectVendor(vendor);
     onSelect();
   }
@@ -28,7 +29,7 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
         (v) => v.business_name.toLowerCase().includes(q) || v.description?.toLowerCase().includes(q)
       );
     }
-    if (filter === 'open') list = list.filter((v) => v.is_open);
+    if (filter === 'open') list = list.filter((v) => vendorAcceptingOrders(v));
     if (filter === 'nearby') list = [...list].sort((a, b) => (a.distanceKm ?? 99) - (b.distanceKm ?? 99));
     return list;
   }, [vendors, query, filter]);
@@ -132,16 +133,18 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
         ) : (
           /* ── Two-column grid, matching the reference's card layout ── */
           <div className="grid grid-cols-2 gap-3">
-            {filteredVendors.map((vendor, i) => (
+            {filteredVendors.map((vendor, i) => {
+              const accepting = vendorAcceptingOrders(vendor);
+              return (
               <motion.button
                 key={vendor.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 onClick={() => handlePick(vendor)}
-                disabled={!vendor.is_open}
+                disabled={!accepting}
                 className={`bg-white rounded-2xl shadow-sm overflow-hidden text-left flex flex-col transition-all ${
-                  vendor.is_open ? 'hover:shadow-md hover:-translate-y-0.5' : 'opacity-60 cursor-not-allowed'
+                  accepting ? 'hover:shadow-md hover:-translate-y-0.5' : 'opacity-60 cursor-not-allowed'
                 }`}
               >
                 <div className="relative h-28 bg-gray-50">
@@ -155,10 +158,10 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                   {/* status badge, top-left — plays the role of the reference's heart icon */}
                   <span
                     className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      vendor.is_open ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+                      accepting ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
                     }`}
                   >
-                    {vendor.is_open ? 'Open' : 'Closed'}
+                    {accepting ? 'Open' : 'Closed'}
                   </span>
                 </div>
 
@@ -173,7 +176,8 @@ export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
                   </div>
                 </div>
               </motion.button>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

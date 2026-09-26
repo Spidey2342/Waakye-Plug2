@@ -1,86 +1,69 @@
-// Time gating utilities for Waakye Plug
-// Orders are OPEN from 5:30 AM to 8:00 AM
+// Platform ordering window (local device time — Ghana is single TZ).
+// Per-vendor availability uses vendors.is_open from the admin panel.
 
-export interface OrderingStatus {
+export const PLATFORM_CLOSE_HOUR = 21; // 9:00 PM — last orders before this time
+
+export interface PlatformOrderingStatus {
   isOpen: boolean;
-  timeUntilClose: number; // milliseconds
-  timeUntilOpen: number; // milliseconds
+  timeUntilClose: number;
+  timeUntilOpen: number;
 }
 
-// For testing: Set to a specific time, or null to use real time
-// Example: new Date('2026-01-15T07:00:00')
 export const TEST_TIME: Date | null = null;
-
-// Demo mode ignores time gating
 export const DEMO_MODE = false;
 
-export function checkOrderingStatus(): OrderingStatus {
+export function getNow(): Date {
+  return TEST_TIME ? new Date(TEST_TIME) : new Date();
+}
 
+export function getPlatformOrderingStatus(): PlatformOrderingStatus {
   if (DEMO_MODE) {
     return {
       isOpen: true,
       timeUntilClose: 60 * 60 * 1000,
-      timeUntilOpen: 0
+      timeUntilOpen: 0,
     };
   }
 
-  // Use test time if provided
-  const now = TEST_TIME ? new Date(TEST_TIME) : new Date();
+  const now = getNow();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const closeMinutes = PLATFORM_CLOSE_HOUR * 60;
 
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const currentTime = currentHour * 60 + currentMinute;
-
-  // 5:30 AM
-  const openTime = 0;
-
-  // 8:00 AM
-  const closeTime = 23* 60 + 59 ;
-      
-  
-  const isOpen = currentTime >= openTime && currentTime < closeTime;
+  const isOpen = currentMinutes < closeMinutes;
 
   let timeUntilClose = 0;
   let timeUntilOpen = 0;
 
   if (isOpen) {
-
     const closeDate = new Date(now);
-    closeDate.setHours(23, 59, 0, 0);
-
-    timeUntilClose = closeDate.getTime() - now.getTime();
-
+    closeDate.setHours(PLATFORM_CLOSE_HOUR, 0, 0, 0);
+    timeUntilClose = Math.max(0, closeDate.getTime() - now.getTime());
   } else {
-
     const openDate = new Date(now);
     openDate.setHours(0, 0, 0, 0);
-
-    // If past today's closing time → open tomorrow
-    if (currentTime >= closeTime) {
-      openDate.setDate(openDate.getDate() + 1);
-    }
-
-    
-
+    openDate.setDate(openDate.getDate() + 1);
     timeUntilOpen = openDate.getTime() - now.getTime();
   }
 
-  return {
-    isOpen,
-    timeUntilClose,
-    timeUntilOpen
-  };
+  return { isOpen, timeUntilClose, timeUntilOpen };
+}
+
+/** @deprecated Use getPlatformOrderingStatus — kept for any stale imports */
+export function checkOrderingStatus(): PlatformOrderingStatus {
+  return getPlatformOrderingStatus();
+}
+
+export function canPlaceOrders(platformOpen: boolean, vendorIsOpen: boolean): boolean {
+  return platformOpen && vendorIsOpen;
 }
 
 export function formatCountdown(milliseconds: number): string {
-
   const totalSeconds = Math.floor(milliseconds / 1000);
-
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  return `${hours.toString().padStart(2,'0')}:${minutes
+  return `${hours.toString().padStart(2, '0')}:${minutes
     .toString()
-    .padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }

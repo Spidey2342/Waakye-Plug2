@@ -13,6 +13,8 @@ import { DELIVERY_FEE, SERVICE_FEE } from '@/app/types/orderTypes';
 interface OrderSummaryScreenProps {
   onBack: () => void;
   onConfirm: () => void;
+  /** Platform + vendor must both accept orders */
+  canPlaceOrders?: boolean;
 }
 
 /** Ho (Volta Region) — default map center / GPS fallback. Never Accra. */
@@ -35,7 +37,7 @@ function makeDropPinIcon() {
   });
 }
 
-export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProps) {
+export function OrderSummaryScreen({ onBack, onConfirm, canPlaceOrders = true }: OrderSummaryScreenProps) {
   const {
     lines, updateQuantity, removeLine,
     customerPhone, setCustomerPhone,
@@ -229,9 +231,13 @@ export function OrderSummaryScreen({ onBack, onConfirm }: OrderSummaryScreenProp
     typeof deliveryLng === 'number' &&
     Number.isFinite(deliveryLat) &&
     Number.isFinite(deliveryLng);
-  const canSubmit = !!customerPhone && hasUsableAddress && hasCoords;
+  const canSubmit = canPlaceOrders && !!customerPhone && hasUsableAddress && hasCoords;
 
   const handleConfirmClick = () => {
+    if (!canPlaceOrders) {
+      toast.error('Ordering is closed for this vendor or for tonight.');
+      return;
+    }
     if (!hasCoords) {
       toast.error('Set your dropoff pin on the map before confirming.');
       return;

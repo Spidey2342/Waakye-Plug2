@@ -24,6 +24,9 @@ export type Vendor = {
   // Whether this vendor offers a customizable bowl (Size/Protein/Extra) on
   // top of their fixed Combo items. Set by the admin per vendor.
   supports_build: boolean;
+  /** Daily ordering window (Ghana local). Both required for customer app to show open. */
+  daily_opens_at: string | null;
+  daily_closes_at: string | null;
 };
 
 // Any approved vendor — this replaces the old hardcoded single VENDOR_ID.
@@ -38,6 +41,21 @@ export async function getApprovedVendors(): Promise<Vendor[]> {
 
   if (error) throw error;
   return (data ?? []) as Vendor[];
+}
+
+const VENDOR_SELECT =
+  'id, business_name, description, location, is_open, latitude, longitude, logo_url, supports_build, daily_opens_at, daily_closes_at';
+
+export async function getVendorById(vendorId: string): Promise<Vendor | null> {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select(VENDOR_SELECT)
+    .eq('id', vendorId)
+    .eq('status', 'approved')
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data ?? null) as Vendor | null;
 }
 
 export async function getVendorMenu(vendorId: string): Promise<MenuItem[]> {
