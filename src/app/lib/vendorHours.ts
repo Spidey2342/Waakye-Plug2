@@ -3,11 +3,25 @@ export type DailyTime = string | null | undefined;
 
 function parseTimeToMinutes(value: DailyTime): number | null {
   if (value == null || value === '') return null;
-  const part = value.trim().split(':');
+  const raw = typeof value === 'string' ? value.trim() : String(value);
+  const part = raw.split(':');
   if (part.length < 2) return null;
   const h = Number(part[0]);
-  const m = Number(part[1]);
+  const m = Number(parseInt(part[1], 10));
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
+
+/** Minutes since midnight in Ghana (Africa/Accra), matching admin copy. */
+export function getGhanaMinutesSinceMidnight(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Accra',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+  const h = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const m = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
   return h * 60 + m;
 }
 
@@ -21,7 +35,7 @@ export function isWithinDailyHours(
   const closeMin = parseTimeToMinutes(closesAt);
   if (openMin == null || closeMin == null) return false;
 
-  const currentMin = now.getHours() * 60 + now.getMinutes();
+  const currentMin = getGhanaMinutesSinceMidnight(now);
 
   if (closeMin > openMin) {
     return currentMin >= openMin && currentMin < closeMin;

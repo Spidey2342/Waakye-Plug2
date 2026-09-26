@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { getApprovedVendors, getVendorById, distanceKm, type Vendor } from '@/app/lib/vendorMenu';
 
 export type { Vendor } from '@/app/lib/vendorMenu';
@@ -16,6 +16,7 @@ interface VendorContextType {
   selectVendor: (vendor: Vendor) => void;
   clearVendor: () => void;
   refreshSelectedVendor: () => Promise<void>;
+  refreshVendors: () => Promise<void>;
   locationStatus: LocationStatus;
   requestLocation: () => void;
 }
@@ -99,6 +100,15 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     setSelectedVendor(null);
   }
 
+  const refreshVendors = useCallback(async () => {
+    try {
+      const data = await getApprovedVendors();
+      setVendors(data);
+    } catch (err) {
+      console.error('Could not refresh vendors', err);
+    }
+  }, []);
+
   async function refreshSelectedVendor() {
     if (!selectedVendor) return;
     try {
@@ -127,6 +137,7 @@ export function VendorProvider({ children }: { children: ReactNode }) {
         selectVendor,
         clearVendor,
         refreshSelectedVendor,
+        refreshVendors,
         locationStatus,
         requestLocation,
       }}

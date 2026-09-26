@@ -29,22 +29,22 @@ export type Vendor = {
   daily_closes_at: string | null;
 };
 
+const VENDOR_SELECT =
+  'id, business_name, description, location, is_open, latitude, longitude, logo_url, supports_build, daily_opens_at, daily_closes_at';
+
 // Any approved vendor — this replaces the old hardcoded single VENDOR_ID.
 // Customers now pick a vendor via VendorSelectScreen instead of always
 // landing on one fixed shop.
 export async function getApprovedVendors(): Promise<Vendor[]> {
   const { data, error } = await supabase
     .from('vendors')
-    .select('id, business_name, description, location, is_open, latitude, longitude, logo_url, supports_build')
+    .select(VENDOR_SELECT)
     .eq('status', 'approved')
     .order('business_name', { ascending: true });
 
   if (error) throw error;
   return (data ?? []) as Vendor[];
 }
-
-const VENDOR_SELECT =
-  'id, business_name, description, location, is_open, latitude, longitude, logo_url, supports_build, daily_opens_at, daily_closes_at';
 
 export async function getVendorById(vendorId: string): Promise<Vendor | null> {
   const { data, error } = await supabase

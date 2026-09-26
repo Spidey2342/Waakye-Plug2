@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Store, MapPin, Search, Loader2, LocateFixed, UtensilsCrossed } from 'lucide-react';
 import { useVendor, type Vendor } from '@/app/context/VendorContext';
 import { vendorAcceptingOrders } from '@/app/lib/vendorHours';
@@ -11,9 +11,17 @@ interface VendorSelectScreenProps {
 }
 
 export function VendorSelectScreen({ onSelect }: VendorSelectScreenProps) {
-  const { vendors, loadingVendors, selectVendor, locationStatus, requestLocation } = useVendor();
+  const { vendors, loadingVendors, selectVendor, locationStatus, requestLocation, refreshVendors } =
+    useVendor();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'open' | 'nearby'>('all');
+
+  // Pick up hours / is_open edits from admin without requiring a full page reload.
+  useEffect(() => {
+    refreshVendors();
+    const interval = setInterval(refreshVendors, 30_000);
+    return () => clearInterval(interval);
+  }, [refreshVendors]);
 
   function handlePick(vendor: Vendor) {
     if (!vendorAcceptingOrders(vendor)) return;

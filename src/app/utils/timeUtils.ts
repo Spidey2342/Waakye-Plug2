@@ -1,5 +1,6 @@
-// Platform ordering window (local device time — Ghana is single TZ).
-// Per-vendor availability uses vendors.is_open from the admin panel.
+// Platform ordering window (Africa/Accra). Per-vendor hours: vendors.is_open + daily_* columns.
+
+import { getGhanaMinutesSinceMidnight } from '@/app/lib/vendorHours';
 
 export const PLATFORM_CLOSE_HOUR = 21; // 9:00 PM — last orders before this time
 
@@ -26,7 +27,7 @@ export function getPlatformOrderingStatus(): PlatformOrderingStatus {
   }
 
   const now = getNow();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = getGhanaMinutesSinceMidnight(now);
   const closeMinutes = PLATFORM_CLOSE_HOUR * 60;
 
   const isOpen = currentMinutes < closeMinutes;
@@ -35,14 +36,9 @@ export function getPlatformOrderingStatus(): PlatformOrderingStatus {
   let timeUntilOpen = 0;
 
   if (isOpen) {
-    const closeDate = new Date(now);
-    closeDate.setHours(PLATFORM_CLOSE_HOUR, 0, 0, 0);
-    timeUntilClose = Math.max(0, closeDate.getTime() - now.getTime());
+    timeUntilClose = Math.max(0, (closeMinutes - currentMinutes) * 60 * 1000);
   } else {
-    const openDate = new Date(now);
-    openDate.setHours(0, 0, 0, 0);
-    openDate.setDate(openDate.getDate() + 1);
-    timeUntilOpen = openDate.getTime() - now.getTime();
+    timeUntilOpen = Math.max(0, (24 * 60 - currentMinutes) * 60 * 1000);
   }
 
   return { isOpen, timeUntilClose, timeUntilOpen };
