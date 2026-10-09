@@ -12,7 +12,12 @@ import {
 } from 'react';
 import { supabase } from '@/app/lib/supabase';
 import { fetchMyOrders, fetchOrderById, type CustomerOrder } from '@/app/lib/customerOrders';
-import { reconcileActiveOrderHandoffFromOrders } from '@/app/lib/deliveryCode';
+import {
+  isActiveDeliveryCodeStatus,
+  recallActiveOrderHandoff,
+  reconcileActiveOrderHandoffFromOrders,
+  rememberActiveOrderHandoff,
+} from '@/app/lib/deliveryCode';
 
 type CustomerOrdersContextValue = {
   orders: CustomerOrder[];
@@ -50,7 +55,26 @@ export function CustomerOrdersProvider({ userId, onHandoffChange, children }: Pr
   const applyOrders = useCallback(
     (next: CustomerOrder[]) => {
       setOrders(next);
-      if (reconcileActiveOrderHandoffFromOrders(next)) onHandoffChange?.();
+      let changed = reconcileActiveOrderHandoffFromOrders(next);
+
+      // Self-heal: if local handoff storage was wiped, rebuild the in-progress
+      // order bar + delivery code from the orders table (source of truth), so
+      // an order that "went on" is never forgotten after a reload/relaunch.
+      if (!recallActiveOrderHandoff()) {
+        const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000;
+        const candidate = next.find(
+          (o) =>
+            isActiveDeliveryCodeStatus(o.status) &&
+            o.created_at &&
+            new Date(o.created_at).getTime() >= twentyFourHoursAgo,
+        );
+        if (candidate && candidate.delivery_code) {
+          rememberActiveOrderHandoff(candidate.id, candidate.delivery_code, candidate.status);
+          changed = true;
+        }
+      }
+
+      if (changed) onHandoffChange?.();
     },
     [onHandoffChange],
   );
