@@ -258,8 +258,18 @@ export function OrderSummaryScreen({ onBack, onConfirm, canPlaceOrders = true }:
     );
   }, [applyCoords, handleGpsFix]);
 
-  // Auto-request high-accuracy GPS on mount.
+  // Auto-request high-accuracy GPS on mount — unless a usable dropoff pin was
+  // already restored (e.g. the cart draft survived a refresh). Yanking the pin
+  // to a fresh fix and re-reverse-geocoding would silently overwrite the
+  // address the customer may have just typed.
+  const pinRestoredAtMount =
+    typeof deliveryLat === 'number' &&
+    typeof deliveryLng === 'number' &&
+    Number.isFinite(deliveryLat) &&
+    Number.isFinite(deliveryLng);
+
   useEffect(() => {
+    if (pinRestoredAtMount) return;
     requestLocation(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
@@ -271,8 +281,8 @@ export function OrderSummaryScreen({ onBack, onConfirm, canPlaceOrders = true }:
     return cleaned;
   };
 
-  const baseItem = (line: CartLine) => line.items.find((i) => i.category === 'base' || i.category === 'combo');
-  const otherItems = (line: CartLine) => line.items.filter((i) => i.category !== 'base' && i.category !== 'combo');
+  const baseItem = (line: CartLine) => line.items.find((i) => ['base', 'combo', 'waakye'].includes(i.category));
+  const otherItems = (line: CartLine) => line.items.filter((i) => !['base', 'combo', 'waakye'].includes(i.category));
 
   const isEmpty = lines.length === 0;
 
@@ -343,6 +353,11 @@ export function OrderSummaryScreen({ onBack, onConfirm, canPlaceOrders = true }:
                         <div>
                           <div className="font-bold text-sm">{baseItem(line)?.name ?? 'Item'}</div>
                           <div className="text-xs text-gray-500">GH₵{lineUnitPrice(line)} each</div>
+                          {baseItem(line)?.included && baseItem(line)!.included!.length > 0 && (
+                            <div className="text-xs text-gray-400 mt-1">
+                              Comes with {baseItem(line)!.included!.map((i) => (i.quantity > 1 ? `${i.quantity}x ${i.name}` : i.name)).join(', ')}
+                            </div>
+                          )}
                         </div>
                       </div>
 

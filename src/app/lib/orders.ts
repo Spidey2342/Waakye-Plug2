@@ -4,8 +4,10 @@ import { generateDeliveryCode } from '@/app/lib/deliveryCode';
 import { quoteDeliveryFee } from '@/app/lib/deliveryPricing';
 import { getVendorById } from '@/app/lib/vendorMenu';
 
+type FlatItem = { id: string; name: string; price: number; category: string; quantity: number; included?: { name: string; quantity: number }[] };
+
 export function flattenCartItems(lines: CartLine[]) {
-  const merged: Record<string, { id: string; name: string; price: number; category: string; quantity: number }> = {};
+  const merged: Record<string, FlatItem> = {};
 
   lines.forEach((line) => {
     line.items.forEach((item) => {
@@ -13,7 +15,7 @@ export function flattenCartItems(lines: CartLine[]) {
       if (merged[item.id]) {
         merged[item.id].quantity += qty;
       } else {
-        merged[item.id] = { id: item.id, name: item.name, price: item.price, category: item.category, quantity: qty };
+        merged[item.id] = { id: item.id, name: item.name, price: item.price, category: item.category, quantity: qty, ...(item.included && item.included.length > 0 ? { included: item.included } : {}) };
       }
     });
   });
@@ -49,7 +51,7 @@ export async function createOrder({
 }) {
   const items = flattenCartItems(lines);
 
-  const vendor = await getVendorById(vendorId);
+const vendor = await getVendorById(vendorId);
   const quoted = quoteDeliveryFee(
     vendor?.latitude ?? null,
     vendor?.longitude ?? null,

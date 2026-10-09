@@ -3,3 +3,8 @@ dist
 build
 .env
 .env.local
+
+# Local build/dev scratch files
+*.log
+typecheck_log.txt
+tmp/

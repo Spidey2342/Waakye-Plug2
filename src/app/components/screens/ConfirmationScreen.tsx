@@ -270,6 +270,11 @@ export function ConfirmationScreen({ orderId, initialDeliveryCode, onDone, onBac
                     {item.quantity > 1 ? ` × ${item.quantity}` : ''}
                   </p>
                   <p className="text-xs text-gray-500">GH₵{(item.price * item.quantity).toFixed(2)}</p>
+                  {'included' in item && (item as { included?: { name: string; quantity: number }[] }).included && (item as { included: { name: string; quantity: number }[] }).included.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Comes with {(item as { included: { name: string; quantity: number }[] }).included.map((inc) => (inc.quantity > 1 ? `${inc.quantity}x ${inc.name}` : inc.name)).join(', ')}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

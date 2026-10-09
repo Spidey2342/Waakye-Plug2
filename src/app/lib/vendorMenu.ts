@@ -1,15 +1,25 @@
 import { supabase } from '@/app/lib/supabase';
 
+// One component that comes inside a Waakye pack — stored on
+// vendor_menu_items.included_items (a JSON array).
+export type WaakyeIncluded = {
+  id: string;
+  name: string;
+  quantity: number;
+};
+
 export type MenuItem = {
   id: string;
   vendor_id: string;
-  category: 'base' | 'protein' | 'extra' | 'drink' | 'breakfast_item' | 'combo';
+  category: 'base' | 'protein' | 'extra' | 'drink' | 'breakfast_item' | 'combo' | 'waakye';
   name: string;
   description: string | null;
   price: number; // exact price if pricing_type is 'fixed', minimum price if 'variable'
   pricing_type: 'fixed' | 'variable';
   image_url: string | null;
   is_available: boolean;
+  /** What a Waakye pack comes with (category 'waakye' only). */
+  included_items?: WaakyeIncluded[] | null;
 };
 
 export type Vendor = {
@@ -78,6 +88,7 @@ export function groupMenuByCategory(items: MenuItem[]) {
     drink: items.filter((i) => i.category === 'drink'),
     breakfast_item: items.filter((i) => i.category === 'breakfast_item'),
     combo: items.filter((i) => i.category === 'combo'),
+    waakye: items.filter((i) => i.category === 'waakye'),
   };
 }
 

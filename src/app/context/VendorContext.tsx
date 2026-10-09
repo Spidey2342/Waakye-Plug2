@@ -27,6 +27,31 @@ interface VendorContextType {
 const VendorContext = createContext<VendorContextType | undefined>(undefined);
 
 const MAX_DISTANCE_KM = 6;
+const VENDOR_KEY = 'wp.selectedVendorId';
+
+function loadStoredVendorId(): string | null {
+  try {
+    return localStorage.getItem(VENDOR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeVendorId(id: string) {
+  try {
+    localStorage.setItem(VENDOR_KEY, id);
+  } catch {
+    // private mode / storage full — selecting the vendor still works in-memory
+  }
+}
+
+function clearStoredVendorId() {
+  try {
+    localStorage.removeItem(VENDOR_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function VendorProvider({ children }: { children: ReactNode }) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -41,7 +66,18 @@ export function VendorProvider({ children }: { children: ReactNode }) {
     async function load() {
       try {
         const data = await getApprovedVendors();
-        if (!cancelled) setVendors(data);
+        if (!cancelled) {
+          setVendors(data);
+
+          // Restore the vendor the customer last picked — a page refresh used
+          // to drop them straight back onto the vendor picker / location gate.
+          // Only restore if that vendor is still approved and listed.
+          const storedId = loadStoredVendorId();
+          if (storedId) {
+            const storedVendor = data.find((v) => v.id === storedId);
+            if (storedVendor) setSelectedVendor(storedVendor);
+          }
+        }
       } catch (err) {
         console.error('Could not load vendors', err);
       } finally {
@@ -97,10 +133,12 @@ export function VendorProvider({ children }: { children: ReactNode }) {
 
   function selectVendor(vendor: Vendor) {
     setSelectedVendor(vendor);
+    storeVendorId(vendor.id);
   }
 
   function clearVendor() {
     setSelectedVendor(null);
+    clearStoredVendorId();
   }
 
   const refreshVendors = useCallback(async () => {

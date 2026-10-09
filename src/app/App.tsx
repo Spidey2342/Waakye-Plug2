@@ -320,8 +320,6 @@ function AppOrderingFlow(props: AppOrderingFlowProps) {
         deliveryLat,
         deliveryLng,
         paymentMethod,
-        deliveryLat,
-        deliveryLng,
         quotedDeliveryFee,
         quotedDistanceKm,
       });

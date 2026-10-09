@@ -161,3 +161,17 @@ Root cause of rider missing customer pin (E2E order *Sunshine Waakye* / Near Awa
   `GRANT UPDATE (current_lat, current_lng, location_updated_at)` on `riders` for
   `authenticated` (needed after login for GPS). Apply in Supabase SQL Editor;
   do not re-run `2026-09-12_rls_lockdown.sql` as-is without these grants.
+
+**FIX #7 — dependency security fixes + push to GitHub (2026-09-15)**
+- `npm audit fix` applied: 7 vulns cleared (1 critical tar; high: vite/postcss/browserslist/nanoid) — committed as `cceb86e` and pushed to Spidey2342 main (remote head verified via `ls-remote`).
+- Vendor repo pushed same day (`8fb1879`: react-router-dom upgraded to ^7.18.4, its last remaining audit vuln). Rider repo already up to date (`84cdf7b`).
+- Git gotcha for future pushes: GitHub CLI credential-helper delegation crashes silently (exit 128, zero output) when git invokes `gh auth git-credential get`. Working pattern: push with an inline-token URL built from `gh auth token` (token resolved at runtime, never printed/stored), `-c credential.helper=` to bypass the broken helper chain.
+
+### 2026-09-18 — FIX #8: "Let's go" button dead on UsernameScreen (profiles save regression) ✅ DEPLOYED + VERIFIED LIVE
+**Root cause:** `UserContext.setUser()` used an upsert of `{id, full_name, phone, email, role}`. PostgREST upserts (`ON CONFLICT DO UPDATE`) require UPDATE privileges on **every payload column** even when no row exists yet — and the Fix #2 lockdown (`2026-09-12_rls_lockdown.sql`) grants `authenticated` UPDATE only on `full_name`/`phone`, anon none. Every first-save failed with 42501 → HTTP 403, and `setUser` swallowed the error (logged at line ~84, returned normally), so UsernameScreen never navigated and never showed an error — the silent dead button.
+
+**Fix (two layers):**
+1. **Migration `schema/migrations/2026-09-13_profiles_self_write_lockdown.sql` ✅ APPLIED LIVE** — table-level INSERT dropped then re-granted on exactly `(id, full_name, phone, email)` for anon + authenticated (role deliberately excluded — the `profiles_insert_self` RLS policy already forces `role='customer'`; Postgres ORs table-level and column-level privileges, so a bare `REVOKE INSERT (role)` alone would be a no-op). Live grants verified via Management API: exactly 10 rows — INSERT(id, full_name, phone, email) ×2 roles + UPDATE(full_name, phone) ×2 roles.
+2. **`UserContext.setUser()` rewritten, NO upsert** — first save is an INSERT `{id, full_name, phone, email}` (synthetic email `${uid}@customers.waakyeplug.app` REQUIRED — profiles.email is NOT NULL + UNIQUE), repeat saves are a targeted UPDATE of `full_name`/`phone` only. Errors now **thrown** so the screen can show them; `UsernameScreen` surfaces the failure inline instead of dying silently.
+
+**Verification:** `scripts/verify-profile-save.mjs` (replays the exact browser call sequence: anon sign-in → select → insert → read-back → update) — ALL GREEN on live prod `verncapitxzsgcughvil`; QA profile + auth user cleaned up (Management-API SQL, verified 0 rows remaining). Syntax gate: 75 files parsed, 0 failed.

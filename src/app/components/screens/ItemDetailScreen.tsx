@@ -28,6 +28,7 @@ export function ItemDetailScreen({ item, onBack, onAddToCart }: ItemDetailScreen
         category: item.category,
         quantity,
         imageUrl: item.image_url,
+        included: (item.included_items ?? []).map((i) => ({ name: i.name, quantity: i.quantity })),
       },
     ]);
   }
@@ -91,6 +92,22 @@ export function ItemDetailScreen({ item, onBack, onAddToCart }: ItemDetailScreen
               {item.description || 'No description added for this item yet.'}
             </p>
           </div>
+
+          {item.category === 'waakye' && item.included_items && item.included_items.length > 0 && (
+            <div>
+              <h2 className="font-bold text-sm text-gray-700 mb-2">What&apos;s included</h2>
+              <div className="flex flex-wrap gap-2">
+                {item.included_items.map((inc) => (
+                  <span
+                    key={inc.id}
+                    className="text-xs font-semibold bg-[#7a1d1d]/5 text-[#7a1d1d] border border-[#7a1d1d]/10 px-2.5 py-1 rounded-full"
+                  >
+                    {inc.quantity > 1 ? `${inc.quantity}x ` : ''}{inc.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between">
             <span className="text-2xl font-bold text-[#7a1d1d]">

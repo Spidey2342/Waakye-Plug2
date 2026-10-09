@@ -72,18 +72,22 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onMyOrders 
     };
   }, [selectedVendor]);
 
-  // The browse grid only ever shows fixed, standalone items (Combos).
+  // The browse grid leads with the vendor's Waakye packs — complete,
+  // pre-made packages (category 'waakye') — followed by any Combo items.
   // Size/Protein/Extra/Drink/Breakfast Item are build-components only —
-  // they're picked inside the Build flow, never ordered on their own here.
+  // they're picked inside the Build flow (the "build your own"/waakye-alone
+  // route), never ordered on their own here.
+  const waakyeItems = useMemo(() => allItems.filter((i) => i.category === 'waakye'), [allItems]);
   const comboItems = useMemo(() => allItems.filter((i) => i.category === 'combo'), [allItems]);
+  const browseItems = useMemo(() => [...waakyeItems, ...comboItems], [waakyeItems, comboItems]);
 
   const filteredItems = useMemo(() => {
-    if (!query.trim()) return comboItems;
+    if (!query.trim()) return browseItems;
     const q = query.toLowerCase();
-    return comboItems.filter(
+    return browseItems.filter(
       (i) => i.name.toLowerCase().includes(q) || i.description?.toLowerCase().includes(q)
     );
-  }, [comboItems, query]);
+  }, [browseItems, query]);
 
   function toggleFavorite(id: string) {
     setFavorites((prev) => {
@@ -167,7 +171,7 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onMyOrders 
           </motion.div>
         )}
 
-        {/* ── Item grid: fixed/Combo items only ── */}
+        {/* ── Item grid: Waakye packs + Combo items ── */}
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-7 h-7 text-[#7a1d1d] animate-spin" />
@@ -176,7 +180,7 @@ export function HomeScreen({ onOpenItem, onBuildOwn, onSwitchVendor, onMyOrders 
           <div className="text-center py-16 text-gray-400">
             <UtensilsCrossed className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p className="font-medium">
-              {showsBuildBanner ? 'No set items right now — try Build Your Own above.' : 'Nothing here yet.'}
+              {showsBuildBanner ? 'No waakye packs right now — try Build Your Own above.' : 'No waakye packs on the menu yet.'}
             </p>
           </div>
         ) : (

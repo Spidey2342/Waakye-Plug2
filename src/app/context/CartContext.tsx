@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { SERVICE_FEE } from '@/app/types/orderTypes';
 import { DELIVERY_FEE_STANDARD_GHS } from '@/app/lib/deliveryPricing';
 import type { MenuItem } from '@/app/lib/vendorMenu';
@@ -15,6 +15,8 @@ export type OrderLineItem = {
   category: MenuItem['category'];
   quantity: number; // per-unit quantity within ONE composed order (e.g. 2 eggs)
   imageUrl?: string | null; // display-only — not part of the real orders.items shape
+  /** What a Waakye pack line comes with (packs only) — carried into orders.items so recaps can show it. */
+  included?: { name: string; quantity: number }[];
 };
 
 export type CartLine = {
@@ -63,24 +65,78 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// The whole cart (lines + delivery details + payment) is drafted to
+// localStorage so a stray page refresh — the kind that re-requests
+// geolocation, clears the pin, and empties the basket — doesn't nuke an
+// in-progress order. Drafts older than 24h are discarded.
+const CART_KEY = 'wp.cart.v1';
+const MAX_DRAFT_AGE_MS = 24 * 60 * 60 * 1000;
+
+interface PersistedCart {
+  savedAt: number;
+  lines: CartLine[];
+  deliveryMode: DeliveryMode;
+  customerPhone: string;
+  customerLocation: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  paymentMethod: PaymentMethod;
+}
+
+function loadPersistedCart(): PersistedCart | null {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedCart;
+    if (!parsed || !Array.isArray(parsed.lines)) return null;
+    if (Date.now() - parsed.savedAt > MAX_DRAFT_AGE_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistCart(cart: PersistedCart) {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  } catch {
+    // storage unavailable — cart still works for this session
+  }
+}
+
 export function lineUnitPrice(line: CartLine): number {
   return line.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>([]);
+  const [initial] = useState(loadPersistedCart);
+  const [lines, setLines] = useState<CartLine[]>(initial?.lines ?? []);
   // Defaults to 'delivery' — Pickup is a disabled "coming soon" button right
   // now, so defaulting to 'pickup' meant someone could hit Confirm without
   // ever being asked for phone/address.
-  const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('delivery');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerLocation, setCustomerLocation] = useState('');
-  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
-  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(initial?.deliveryMode ?? 'delivery');
+  const [customerPhone, setCustomerPhone] = useState(initial?.customerPhone ?? '');
+  const [customerLocation, setCustomerLocation] = useState(initial?.customerLocation ?? '');
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(initial?.deliveryLat ?? null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(initial?.deliveryLng ?? null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? 'cash');
   const [quotedDeliveryFee, setQuotedDeliveryFee] = useState(DELIVERY_FEE_STANDARD_GHS);
   const [quotedDistanceKm, setQuotedDistanceKm] = useState<number | null>(null);
   const [pendingDeliveryFeeOwed, setPendingDeliveryFeeOwed] = useState(0);
+
+  // Autosave the draft on every change so a refresh restores it intact.
+  useEffect(() => {
+    persistCart({
+      savedAt: Date.now(),
+      lines,
+      deliveryMode,
+      customerPhone,
+      customerLocation,
+      deliveryLat,
+      deliveryLng,
+      paymentMethod,
+    });
+  }, [lines, deliveryMode, customerPhone, customerLocation, deliveryLat, deliveryLng, paymentMethod]);
 
   const addToCart = (vendorId: string, items: OrderLineItem[]) => {
     const id = `line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -117,6 +173,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setPaymentMethod('cash');
     setQuotedDeliveryFee(DELIVERY_FEE_STANDARD_GHS);
     setQuotedDistanceKm(null);
+    try {
+      localStorage.removeItem(CART_KEY);
+    } catch {
+      // ignore
+    }
   };
 
   const toggleDeliveryMode = () => setDeliveryMode((m) => (m === 'pickup' ? 'delivery' : 'pickup'));

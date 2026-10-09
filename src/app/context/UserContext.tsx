@@ -103,6 +103,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
           .update({ full_name: trimmedName, phone: phoneNumber })
           .eq('id', userId)
       : await supabase.from('profiles').insert({
+          // Narrow to the columns the lockdown grants INSERT on
+          // (2026-09-13_profiles_self_write_lockdown.sql: id, full_name, phone, email).
+          // email is NOT NULL + UNIQUE, so the synthetic one MUST be sent;
+          // role is set by its column default ('customer') and never sent by the client.
           id: userId,
           full_name: trimmedName,
           phone: phoneNumber,

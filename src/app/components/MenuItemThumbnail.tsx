@@ -8,6 +8,7 @@ const CATEGORY_ICON: Record<MenuItem['category'], LucideIcon> = {
   drink: CupSoda,
   breakfast_item: Croissant,
   combo: UtensilsCrossed,
+  waakye: Soup,
 };
 
 const SIZE_CLASSES = {
